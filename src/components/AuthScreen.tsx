@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User as UserIcon, ShieldCheck, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import type { User } from '../types';
+import { apiRequest } from '../api';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: User) => void;
@@ -16,7 +17,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Form Submission
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -41,39 +42,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    // Load existing users
-    const usersRaw = localStorage.getItem('timecamp_users');
-    const users: User[] = usersRaw ? JSON.parse(usersRaw) : [];
-
-    if (mode === 'signup') {
-      // Check if email already exists
-      const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-      if (exists) {
-        setError('This email is already registered.');
-        return;
+    try {
+      if (mode === 'signup') {
+        const user = await apiRequest<User>('/auth/signup', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            password
+          })
+        });
+        onLoginSuccess(user);
+      } else {
+        const user = await apiRequest<User>('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: email.trim(),
+            password
+          })
+        });
+        onLoginSuccess(user);
       }
-
-      // Create new user
-      const newUser: User = {
-        id: 'usr_' + Math.random().toString(36).substr(2, 9),
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        passwordHash: btoa(password), // Simple client-side encoding for demonstration
-        createdAt: new Date().toISOString()
-      };
-
-      // Save user
-      users.push(newUser);
-      localStorage.setItem('timecamp_users', JSON.stringify(users));
-      onLoginSuccess(newUser);
-    } else {
-      // Login mode
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (!user || user.passwordHash !== btoa(password)) {
-        setError('Invalid email or password.');
-        return;
-      }
-      onLoginSuccess(user);
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed. Please try again.');
     }
   };
 
@@ -86,14 +77,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       passwordHash: 'Z3Vlc3Q=', // btoa('guest')
       createdAt: new Date().toISOString()
     };
-
-    // Store in users list if not present
-    const usersRaw = localStorage.getItem('timecamp_users');
-    const users: User[] = usersRaw ? JSON.parse(usersRaw) : [];
-    if (!users.some(u => u.id === 'usr_guest')) {
-      users.push(guestUser);
-      localStorage.setItem('timecamp_users', JSON.stringify(users));
-    }
 
     onLoginSuccess(guestUser);
   };
