@@ -80,7 +80,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projects, timeEntries, p
   return (
     <div>
       {/* Filters Toolbar */}
-      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', marginBottom: '2rem', padding: '1rem 1.5rem' }}>
+      <div className="card report-filter-toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', marginBottom: '2rem', padding: '1rem 1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           <Filter size={16} />
           <strong style={{ fontWeight: 600 }}>Filter:</strong>
@@ -208,7 +208,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({ projects, timeEntries, p
               No time records tracked.
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', margin: 'auto 0', padding: '1rem 0' }}>
+            <div className="donut-chart-container">
               {/* Donut SVG */}
               <svg width="120" height="120" viewBox="0 0 100 100">
                 {/* Background track (Non-Billable) */}

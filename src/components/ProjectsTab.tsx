@@ -278,7 +278,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({
               </div>
 
               {/* Stats Indicators */}
-              <div className="grid-3" style={{ background: 'rgba(0,0,0,0.15)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div className="project-stats-grid">
                 <div style={{ textAlign: 'center' }}>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Logged Hours</span>
                   <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{stats.hours}h</strong>

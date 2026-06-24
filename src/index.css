@@ -528,6 +528,12 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.tracker-project-select {
+  width: 150px;
+}
+.tracker-task-select {
+  width: 130px;
+}
 
 .tracker-select-btn:hover {
   background-color: var(--border-color);
@@ -698,3 +704,211 @@ a {
     padding-top: 0.5rem;
   }
 }
+
+/* Responsive Layout Utilities & overrides */
+
+.invoices-layout-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.invoice-document-sheet {
+  padding: 2.5rem;
+  background-color: #ffffff;
+  color: #1f2937;
+  min-height: 600px;
+  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-lg);
+}
+
+.responsive-invoice-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}
+
+.responsive-invoice-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  font-size: 0.85rem;
+}
+
+.responsive-invoice-dates {
+  display: flex;
+  gap: 2rem;
+  border-bottom: 2px solid #f3f4f6;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.project-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: rgba(0, 0, 0, 0.15);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.responsive-tracker-selects {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.donut-chart-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin: auto 0;
+  padding: 1rem 0;
+}
+
+@media (max-width: 1024px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .app-nav {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+  }
+  .invoices-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .tracker-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  .responsive-tracker-selects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .responsive-tracker-selects .tracker-select-btn {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .responsive-tracker-selects .billable-toggle {
+    grid-column: span 1;
+    justify-self: start;
+  }
+  .responsive-tracker-selects .timer-display {
+    grid-column: span 1;
+    text-align: right;
+  }
+  .responsive-tracker-selects button.btn {
+    grid-column: span 2;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .logo-section {
+    justify-content: center;
+  }
+  .header-meta {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .quick-stats {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .invoice-document-sheet {
+    padding: 1.25rem;
+    min-height: auto;
+  }
+  .responsive-invoice-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .responsive-invoice-grid-2 {
+    grid-template-columns: 1fr;
+    margin-bottom: 2rem;
+    gap: 1rem;
+  }
+  .responsive-invoice-dates {
+    gap: 1rem;
+    justify-content: space-between;
+  }
+  .report-filter-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .report-filter-toolbar .form-group {
+    justify-content: space-between;
+    margin-bottom: 0 !important;
+  }
+  .report-filter-toolbar > div:last-child {
+    margin-left: 0 !important;
+    text-align: center;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 480px) {
+  .project-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .responsive-tracker-selects {
+    grid-template-columns: 1fr;
+  }
+  .responsive-tracker-selects .billable-toggle {
+    grid-column: span 1;
+    justify-self: center;
+  }
+  .responsive-tracker-selects .timer-display {
+    grid-column: span 1;
+    text-align: center;
+  }
+  .responsive-tracker-selects button.btn {
+    grid-column: span 1;
+  }
+  .donut-chart-container {
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+  }
+  
+  /* Additional mobile optimizations */
+  .card {
+    padding: 1rem;
+  }
+  .card.animate-fade-in {
+    padding: 1.25rem !important;
+  }
+  .main-content {
+    padding: 1rem;
+  }
+  .sandbox-badge {
+    display: none !important;
+  }
+}
+

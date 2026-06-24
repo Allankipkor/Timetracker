@@ -332,9 +332,9 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
             <h2 style={{ fontSize: '1.5rem', fontFamily: 'var(--font-display)', marginTop: '0.75rem' }}>Generate New Invoice</h2>
           </div>
 
-          <form onSubmit={handleCreateInvoice} className="grid-3" style={{ alignItems: 'flex-start', gap: '1.5rem' }}>
+          <form onSubmit={handleCreateInvoice} className="invoices-layout-grid">
             {/* Primary Details Panel */}
-            <div className="card" style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <h3 style={{ fontSize: '1.05rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
                 Invoice Line Items
               </h3>
@@ -576,11 +576,11 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
             </div>
           </div>
 
-          <div className="grid-3" style={{ alignItems: 'flex-start' }}>
+          <div className="invoices-layout-grid">
             {/* The Invoice Document Sheet */}
-            <div className="card" style={{ gridColumn: 'span 2', padding: '2.5rem', backgroundColor: '#ffffff', color: '#1f2937', minHeight: '600px', border: '1px solid #e5e7eb', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <div className="invoice-document-sheet">
               {/* Invoice Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem' }}>
+              <div className="responsive-invoice-header">
                 <div>
                   <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', fontFamily: 'var(--font-display)' }}>INVOICE</h1>
                   <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Number: {activeInvoice.invoiceNumber}</span>
@@ -592,7 +592,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
               </div>
 
               {/* Sender & Receiver Info */}
-              <div className="grid-2" style={{ marginBottom: '3rem', fontSize: '0.85rem' }}>
+              <div className="responsive-invoice-grid-2">
                 <div>
                   <h4 style={{ color: '#4b5563', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.75rem', marginBottom: '0.5rem' }}>Billed From:</h4>
                   <strong style={{ fontSize: '0.95rem', color: '#111827' }}>TimeCamp Consultant</strong>
@@ -606,7 +606,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
               </div>
 
               {/* Meta Dates Box */}
-              <div style={{ display: 'flex', gap: '2rem', borderBottom: '2px solid #f3f4f6', paddingBottom: '1rem', marginBottom: '2rem', fontSize: '0.85rem' }}>
+              <div className="responsive-invoice-dates">
                 <div>
                   <span style={{ color: '#6b7280', display: 'block' }}>Date Issued:</span>
                   <strong style={{ color: '#111827' }}>{activeInvoice.date}</strong>

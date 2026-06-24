@@ -245,14 +245,13 @@ export const TrackerTab: React.FC<TrackerTabProps> = ({
           />
         </div>
 
-        <div className="tracker-selects">
+        <div className="responsive-tracker-selects">
           {/* Project Selector */}
           <select
             value={selectedProjectId}
             onChange={(e) => handleProjectChange(e.target.value)}
             disabled={isTimerRunning}
-            className="tracker-select-btn"
-            style={{ width: '150px' }}
+            className="tracker-select-btn tracker-project-select"
           >
             {projects.map(p => (
               <option key={p.id} value={p.id}>
@@ -267,8 +266,7 @@ export const TrackerTab: React.FC<TrackerTabProps> = ({
               value={selectedTaskId}
               onChange={(e) => setSelectedTaskId(e.target.value)}
               disabled={isTimerRunning}
-              className="tracker-select-btn"
-              style={{ width: '130px' }}
+              className="tracker-select-btn tracker-task-select"
             >
               <option value="">No task</option>
               {projects.find(p => p.id === selectedProjectId)?.tasks.map(t => (
@@ -297,12 +295,12 @@ export const TrackerTab: React.FC<TrackerTabProps> = ({
 
           {/* Start/Stop Button */}
           {isTimerRunning ? (
-            <button className="btn btn-danger" onClick={handleStopTimer} style={{ padding: '0.6rem 1.4rem' }}>
+            <button className="btn btn-danger" onClick={handleStopTimer}>
               <Square size={16} fill="white" />
               <span>Stop</span>
             </button>
           ) : (
-            <button className="btn btn-success" onClick={handleStartTimer} style={{ padding: '0.6rem 1.4rem' }}>
+            <button className="btn btn-success" onClick={handleStartTimer}>
               <Play size={16} fill="white" />
               <span>Start</span>
             </button>

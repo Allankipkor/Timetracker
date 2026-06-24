@@ -333,6 +333,7 @@ function App() {
           </div>
 
           <div
+            className="sandbox-badge"
             style={{
               display: 'flex',
               alignItems: 'center',
