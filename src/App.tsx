@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Clock, Folder, FileText, BarChart3, Settings, Shield } from 'lucide-react';
-import type { TimeEntry, Project, Invoice, PayPalSettings } from './types';
-import { MOCK_PROJECTS, MOCK_TIME_ENTRIES, MOCK_INVOICES, MOCK_PAYPAL_SETTINGS } from './mockData';
+import { Clock, Folder, FileText, BarChart3, Settings, Shield, LogOut } from 'lucide-react';
+import type { TimeEntry, Project, Invoice, PayPalSettings, User } from './types';
+import { MOCK_PAYPAL_SETTINGS } from './mockData';
 
 // Tab Components
 import { TrackerTab } from './components/TrackerTab';
@@ -10,6 +10,8 @@ import { InvoicesTab } from './components/InvoicesTab';
 import { ReportsTab } from './components/ReportsTab';
 import { SettingsTab } from './components/SettingsTab';
 import { ClientPayment } from './components/ClientPayment';
+import { AuthScreen } from './components/AuthScreen';
+import { apiRequest } from './api';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'tracker' | 'projects' | 'invoices' | 'reports' | 'settings'>('tracker');
@@ -20,6 +22,10 @@ function App() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [paypalSettings, setPaypalSettings] = useState<PayPalSettings>(MOCK_PAYPAL_SETTINGS);
+  
+  // Authentication & Dropdown states
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Handle client-facing hash routing detection
   useEffect(() => {
@@ -37,70 +43,107 @@ function App() {
     return () => window.removeEventListener('hashchange', checkHashRoute);
   }, []);
 
-  const handleClientPaymentSuccess = (invoiceId: string) => {
-    const updated = invoices.map(inv => {
-      if (inv.id === invoiceId) {
-        return {
-          ...inv,
-          status: 'Paid' as const
-        };
-      }
-      return inv;
-    });
-    saveInvoices(updated);
+  const handleClientPaymentSuccess = (_invoiceId: string) => {
+    // If merchant is logged in, reload invoices from Postgres to reflect "Paid" checkout state
+    if (currentUser) {
+      apiRequest<Invoice[]>('/invoices')
+        .then(setInvoices)
+        .catch(err => console.error('Error reloading invoices after payment:', err));
+    }
   };
 
-  // Initialize from LocalStorage or Mock Data
+  // Initialize user session on mount
   useEffect(() => {
-    const cachedProjects = localStorage.getItem('timecamp_projects');
-    const cachedEntries = localStorage.getItem('timecamp_entries');
-    const cachedInvoices = localStorage.getItem('timecamp_invoices');
-    const cachedSettings = localStorage.getItem('timecamp_settings');
-
-    if (cachedProjects) setProjects(JSON.parse(cachedProjects));
-    else {
-      setProjects(MOCK_PROJECTS);
-      localStorage.setItem('timecamp_projects', JSON.stringify(MOCK_PROJECTS));
-    }
-
-    if (cachedEntries) setTimeEntries(JSON.parse(cachedEntries));
-    else {
-      setTimeEntries(MOCK_TIME_ENTRIES);
-      localStorage.setItem('timecamp_entries', JSON.stringify(MOCK_TIME_ENTRIES));
-    }
-
-    if (cachedInvoices) setInvoices(JSON.parse(cachedInvoices));
-    else {
-      setInvoices(MOCK_INVOICES);
-      localStorage.setItem('timecamp_invoices', JSON.stringify(MOCK_INVOICES));
-    }
-
-    if (cachedSettings) setPaypalSettings(JSON.parse(cachedSettings));
-    else {
-      setPaypalSettings(MOCK_PAYPAL_SETTINGS);
-      localStorage.setItem('timecamp_settings', JSON.stringify(MOCK_PAYPAL_SETTINGS));
+    const cachedUser = localStorage.getItem('timecamp_current_user');
+    if (cachedUser) {
+      try {
+        setCurrentUser(JSON.parse(cachedUser));
+      } catch {
+        localStorage.removeItem('timecamp_current_user');
+      }
     }
   }, []);
 
-  // Sync state changes to LocalStorage
-  const saveProjects = (updated: Project[]) => {
+  // Fetch initial data when user logs in
+  useEffect(() => {
+    if (!currentUser) {
+      setProjects([]);
+      setTimeEntries([]);
+      setInvoices([]);
+      setPaypalSettings(MOCK_PAYPAL_SETTINGS);
+      return;
+    }
+
+    const loadBackendData = async () => {
+      try {
+        const [projList, entryList, invList, settings] = await Promise.all([
+          apiRequest<Project[]>('/projects'),
+          apiRequest<TimeEntry[]>('/entries'),
+          apiRequest<Invoice[]>('/invoices'),
+          apiRequest<PayPalSettings>('/settings')
+        ]);
+        setProjects(projList);
+        setTimeEntries(entryList);
+        setInvoices(invList);
+        setPaypalSettings(settings);
+      } catch (err) {
+        console.error('Failed to load user backend data:', err);
+      }
+    };
+    loadBackendData();
+  }, [currentUser]);
+
+  // Sync state changes to serverless Postgres DB
+  const saveProjects = async (updated: Project[]) => {
     setProjects(updated);
-    localStorage.setItem('timecamp_projects', JSON.stringify(updated));
+    if (!currentUser) return;
+    try {
+      await apiRequest('/projects', {
+        method: 'POST',
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to sync projects to database:', err);
+    }
   };
 
-  const saveTimeEntries = (updated: TimeEntry[]) => {
+  const saveTimeEntries = async (updated: TimeEntry[]) => {
     setTimeEntries(updated);
-    localStorage.setItem('timecamp_entries', JSON.stringify(updated));
+    if (!currentUser) return;
+    try {
+      await apiRequest('/entries', {
+        method: 'POST',
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to sync time entries to database:', err);
+    }
   };
 
-  const saveInvoices = (updated: Invoice[]) => {
+  const saveInvoices = async (updated: Invoice[]) => {
     setInvoices(updated);
-    localStorage.setItem('timecamp_invoices', JSON.stringify(updated));
+    if (!currentUser) return;
+    try {
+      await apiRequest('/invoices', {
+        method: 'POST',
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to sync invoices to database:', err);
+    }
   };
 
-  const saveSettings = (updated: PayPalSettings) => {
+  const saveSettings = async (updated: PayPalSettings) => {
     setPaypalSettings(updated);
-    localStorage.setItem('timecamp_settings', JSON.stringify(updated));
+    if (!currentUser) return;
+    try {
+      await apiRequest('/settings', {
+        method: 'POST',
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.error('Failed to sync settings to database:', err);
+    }
   };
 
   // State Modifiers
@@ -207,10 +250,19 @@ function App() {
     return (
       <ClientPayment
         invoiceId={clientInvoiceId}
-        invoices={invoices}
-        projects={projects}
-        paypalSettings={paypalSettings}
         onPaymentSuccess={handleClientPaymentSuccess}
+      />
+    );
+  }
+
+  // Intercept authentication
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          localStorage.setItem('timecamp_current_user', JSON.stringify(user));
+        }}
       />
     );
   }
@@ -296,6 +348,98 @@ function App() {
           >
             <Shield size={12} />
             <span>PayPal Sandbox</span>
+          </div>
+
+          {/* User profile section */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-color)',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '30px',
+                color: 'var(--text-primary)',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                outline: 'none',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.06)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)'}
+            >
+              <div style={{
+                width: '1.5rem',
+                height: '1.5rem',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--accent), #2563eb)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 700
+              }}>
+                {currentUser?.name.substring(0, 2).toUpperCase() || 'US'}
+              </div>
+              <span>{currentUser?.name.split(' ')[0]}</span>
+            </button>
+
+            {showProfileMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '120%',
+                right: 0,
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+                padding: '0.75rem',
+                zIndex: 100,
+                width: '200px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                textAlign: 'left'
+              }}>
+                <div style={{ padding: '0.25rem 0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.name}</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser?.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setCurrentUser(null);
+                    localStorage.removeItem('timecamp_current_user');
+                    setShowProfileMenu(false);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: '#f87171',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <LogOut size={14} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

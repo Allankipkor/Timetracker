@@ -6,29 +6,26 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 
 interface ClientPaymentProps {
   invoiceId: string;
-  invoices: Invoice[];
-  projects: Project[];
-  paypalSettings: PayPalSettings;
-  onPaymentSuccess: (invoiceId: string) => void;
+  onPaymentSuccess?: (invoiceId: string) => void;
 }
 
 export const ClientPayment: React.FC<ClientPaymentProps> = ({
   invoiceId,
-  invoices,
-  projects,
-  paypalSettings,
   onPaymentSuccess
 }) => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [paypalSettings, setPaypalSettings] = useState<PayPalSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showPayPalReceipt, setShowPayPalReceipt] = useState(false);
   const [paypalTxId, setPaypalTxId] = useState('');
   const [redirectCountdown, setRedirectCountdown] = useState(5);
 
   // Dynamic currency variables
-  const code = invoice ? invoice.currency : paypalSettings.currency;
+  const code = invoice ? invoice.currency : (paypalSettings?.currency || 'USD');
   const symbol = getCurrencySymbol(code);
-  const isMockId = !paypalSettings.clientId || paypalSettings.clientId.includes('MOCK_CLIENT_ID');
+  const isMockId = !paypalSettings?.clientId || paypalSettings.clientId.includes('MOCK_CLIENT_ID');
 
   // PayPal checkout flow states
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
@@ -39,21 +36,52 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
   const [isAlreadyPaid, setIsAlreadyPaid] = useState(false);
 
   useEffect(() => {
-    const foundInvoice = invoices.find(inv => inv.id === invoiceId);
-    if (foundInvoice) {
-      setInvoice(foundInvoice);
-      setBuyerEmail(foundInvoice.clientEmail || 'buyer@example.com');
-      const foundProject = projects.find(p => p.id === foundInvoice.projectId);
-      if (foundProject) {
-        setProject(foundProject);
-      }
-      
-      // If invoice is already paid, lock link to prevent reuse
-      if (foundInvoice.status === 'Paid') {
+    setLoading(true);
+    setLoadError(null);
+    fetch(`/api/invoices?id=${invoiceId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Invoice not found or database connection failed');
+        return res.json();
+      })
+      .then(data => {
+        setInvoice(data.invoice);
+        setProject(data.project);
+        setPaypalSettings(data.paypalSettings);
+        setBuyerEmail(data.invoice.clientEmail || 'buyer@example.com');
+        if (data.invoice.status === 'Paid') {
+          setIsAlreadyPaid(true);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching client invoice details:', err);
+        setLoadError(err.message);
+        setLoading(false);
+      });
+  }, [invoiceId]);
+
+  const handleCompleteBackendPayment = async () => {
+    try {
+      const res = await fetch(`/api/invoices?id=${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'Paid' })
+      });
+      if (!res.ok) throw new Error('Failed to update invoice status in database');
+
+      if (invoice) {
+        setInvoice({ ...invoice, status: 'Paid' });
         setIsAlreadyPaid(true);
       }
+      setShowPayPalReceipt(false);
+      if (onPaymentSuccess) {
+        onPaymentSuccess(invoiceId);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating payment status on server. Please contact support.');
     }
-  }, [invoiceId, invoices, projects]);
+  };
 
   // Handle Login submission
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -96,7 +124,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
     if (!showPayPalReceipt || !invoice || invoice.status === 'Paid') return;
 
     if (redirectCountdown <= 0) {
-      onPaymentSuccess(invoiceId);
+      handleCompleteBackendPayment();
       return;
     }
 
@@ -105,9 +133,43 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [showPayPalReceipt, redirectCountdown, invoice, invoiceId, onPaymentSuccess]);
+  }, [showPayPalReceipt, redirectCountdown, invoice, invoiceId]);
 
-  if (!invoice) {
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        backgroundColor: '#0a0e17',
+        color: '#f8fafc',
+        fontFamily: 'var(--font-sans)',
+        padding: '2rem',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid rgba(255, 255, 255, 0.1)',
+          borderTop: '4px solid var(--accent)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '1.5rem'
+        }} />
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Loading secure checkout portal...</p>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (loadError || !invoice) {
     return (
       <div style={{
         display: 'flex',
@@ -124,7 +186,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
         <AlertCircle size={64} color="var(--danger)" style={{ marginBottom: '1.5rem' }} />
         <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Invoice Not Found</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          The requested invoice link is invalid, expired, or has been deleted.
+          {loadError || 'The requested invoice link is invalid, expired, or has been deleted.'}
         </p>
         <a href="/" className="btn btn-primary">Return to Dashboard</a>
       </div>
@@ -351,10 +413,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
 
             {/* Return Link & Redirect Notification */}
             <button
-              onClick={() => {
-                onPaymentSuccess(invoiceId);
-                setShowPayPalReceipt(false);
-              }}
+              onClick={handleCompleteBackendPayment}
               style={{
                 border: 'none',
                 background: 'none',
@@ -497,7 +556,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
           {/* Flows */}
           {paypalFlow === 'idle' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {!isMockId ? (
+              {!isMockId && paypalSettings ? (
                 <PayPalScriptProvider options={{ 
                   clientId: paypalSettings.clientId,
                   currency: code,
@@ -711,7 +770,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#64748b' }}>Payee:</span>
-                  <strong style={{ color: '#334155' }}>{paypalSettings.email}</strong>
+                  <strong style={{ color: '#334155' }}>{paypalSettings?.email}</strong>
                 </div>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />

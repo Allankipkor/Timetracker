@@ -53,6 +53,14 @@ export interface Invoice {
   currency: string; // Invoice currency (e.g. USD, EUR, etc)
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  createdAt: string;
+}
+
 export interface PayPalSettings {
   email: string;
   clientId: string;
