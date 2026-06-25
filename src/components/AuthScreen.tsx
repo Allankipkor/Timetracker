@@ -15,11 +15,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
 
     // Validation
     if (!email || !password) {
@@ -44,7 +46,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
     try {
       if (mode === 'signup') {
-        const user = await apiRequest<User>('/auth/signup', {
+        await apiRequest<User>('/auth/signup', {
           method: 'POST',
           body: JSON.stringify({
             name: name.trim(),
@@ -52,7 +54,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             password
           })
         });
-        onLoginSuccess(user);
+        // Switch to login, clear password fields, and notify success
+        setSuccessMessage('Account created successfully! Please log in with your credentials.');
+        setPassword('');
+        setConfirmPassword('');
+        setMode('login');
       } else {
         const user = await apiRequest<User>('/auth/login', {
           method: 'POST',
@@ -174,6 +180,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             }
           </p>
         </div>
+
+        {/* Success Alert */}
+        {successMessage && (
+          <div style={{
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.2)',
+            color: '#34d399',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            animation: 'fadeIn 0.2s'
+          }}>
+            <ShieldCheck size={16} style={{ flexShrink: 0 }} />
+            <span>{successMessage}</span>
+          </div>
+        )}
 
         {/* Error Alert */}
         {error && (
@@ -360,7 +385,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => { setMode('signup'); setError(null); }}
+                onClick={() => { setMode('signup'); setError(null); setSuccessMessage(null); }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -379,7 +404,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               Already have an account?{' '}
               <button
                 type="button"
-                onClick={() => { setMode('login'); setError(null); }}
+                onClick={() => { setMode('login'); setError(null); setSuccessMessage(null); }}
                 style={{
                   background: 'none',
                   border: 'none',
