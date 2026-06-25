@@ -39,9 +39,9 @@ function App() {
       if (hash.startsWith('#/pay/')) {
         const invId = hash.replace('#/pay/', '');
         setClientInvoiceId(invId);
-      } else if (pathname === '/coral/payment' && paykey) {
+      } else if ((pathname === '/payment' || pathname === '/coral/payment') && paykey) {
         setClientInvoiceId(paykey);
-      } else if (hash.startsWith('#/coral/payment')) {
+      } else if (hash.startsWith('#/coral/payment') || hash.startsWith('#/payment')) {
         const hashSearch = hash.includes('?') ? hash.split('?')[1] : '';
         const hashParams = new URLSearchParams(hashSearch);
         const hashPaykey = hashParams.get('paykey');
