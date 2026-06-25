@@ -723,6 +723,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
                       clientEmail={activeInvoice.clientEmail}
                       currency={activeInvoice.currency}
                       clientId={paypalSettings.clientId}
+                      merchantEmail={paypalSettings.email}
                       onPaymentSuccess={(txId) => handlePaymentSuccess(activeInvoice, txId)}
                     />
                   </div>

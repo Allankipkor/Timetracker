@@ -7,6 +7,7 @@ interface PayPalCheckoutProps {
   clientEmail: string;
   currency?: string;
   clientId: string;
+  merchantEmail: string;
   onPaymentSuccess: (transactionId: string) => void;
   onClose?: () => void;
 }
@@ -16,6 +17,7 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   amount,
   currency,
   clientId,
+  merchantEmail,
   onPaymentSuccess,
   onClose
 }) => {
@@ -42,6 +44,9 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
                     amount: {
                       currency_code: code,
                       value: amount.toFixed(2)
+                    },
+                    payee: {
+                      email_address: merchantEmail
                     },
                     description: `Invoice ${invoiceId}`
                   }

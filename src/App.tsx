@@ -80,7 +80,15 @@ function App() {
           apiRequest<Project[]>('/projects'),
           apiRequest<TimeEntry[]>('/entries'),
           apiRequest<Invoice[]>('/invoices'),
-          apiRequest<PayPalSettings>('/settings')
+          apiRequest<PayPalSettings>('/settings').catch(err => {
+            console.warn('PayPal settings not found, loading default profile settings:', err);
+            return {
+              email: currentUser.email,
+              clientId: 'test',
+              mode: 'sandbox',
+              currency: 'USD'
+            } as PayPalSettings;
+          })
         ]);
         setProjects(projList);
         setTimeEntries(entryList);

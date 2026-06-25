@@ -534,6 +534,9 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
                               currency_code: code,
                               value: invoice.total.toFixed(2)
                             },
+                            payee: {
+                              email_address: paypalSettings.email
+                            },
                             description: `Invoice ${invoice.invoiceNumber}`
                           }
                         ]
