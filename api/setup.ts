@@ -87,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Seeding Guest Sandbox User profile data (so writes don't fail)
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
+    const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
     
     await sql`
       INSERT INTO users (id, name, email, password_hash)
@@ -96,8 +97,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sql`
       INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
-      VALUES ('usr_guest', 'guest@example.com', 'Aef_9X8DMOCK_CLIENT_ID_zY2', 'sandbox', 'USD')
-      ON CONFLICT (user_id) DO NOTHING;
+      VALUES ('usr_guest', 'guest@example.com', ${defaultClientId}, 'sandbox', 'USD')
+      ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
     `;
 
     await sql`

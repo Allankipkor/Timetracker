@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Create default PayPal settings for the new user
     const defaultPaypalEmail = trimmedEmail;
-    const defaultClientId = 'Aef_9X8DMOCK_CLIENT_ID_zY2'; // placeholder
+    const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
     await sql`
       INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
       VALUES (${userId}, ${defaultPaypalEmail}, ${defaultClientId}, 'sandbox', 'USD');
