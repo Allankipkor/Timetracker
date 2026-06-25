@@ -51,15 +51,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     // Create a default project for onboarding
-    const projectId = 'proj_onboard';
+    const projectId = 'proj_' + Math.random().toString(36).substr(2, 9);
     await sql`
       INSERT INTO projects (id, user_id, name, client_name, color, hourly_rate)
       VALUES (${projectId}, ${userId}, 'Freelance Tasks', 'Sample Client', '#3b82f6', 150.00);
     `;
 
     // Create default tasks
-    const taskId1 = 'tsk_dev';
-    const taskId2 = 'tsk_design';
+    const taskId1 = 'tsk_' + Math.random().toString(36).substr(2, 9);
+    const taskId2 = 'tsk_' + Math.random().toString(36).substr(2, 9);
     await sql`
       INSERT INTO tasks (id, project_id, name)
       VALUES 
