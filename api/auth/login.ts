@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Query user
     const userResult = await sql`
-      SELECT id, name, email, created_at FROM users 
+      SELECT id, name, email, role, status, created_at FROM users 
       WHERE email = ${trimmedEmail} AND password_hash = ${passwordHash}
       LIMIT 1;
     `;
@@ -38,10 +38,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const user = userResult.rows[0];
 
+    // Check account status
+    if (user.status === 'pending') {
+      return res.status(403).json({ error: 'Your account is pending admin approval. Please try again later.' });
+    }
+    if (user.status === 'rejected') {
+      return res.status(403).json({ error: 'Your account registration has been rejected by an administrator.' });
+    }
+
     return res.status(200).json({
       id: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      status: user.status,
       createdAt: user.created_at
     });
   } catch (error: any) {

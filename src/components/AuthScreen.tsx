@@ -54,8 +54,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
             password
           })
         });
-        // Switch to login, clear password fields, and notify success
-        setSuccessMessage('Account created successfully! Please log in with your credentials.');
+        // Switch to login, clear password fields, and notify success of pending approval
+        setSuccessMessage('Account created successfully! Your request is pending admin approval. You will be able to log in once approved.');
         setPassword('');
         setConfirmPassword('');
         setMode('login');

@@ -11,10 +11,11 @@ import { ReportsTab } from './components/ReportsTab';
 import { SettingsTab } from './components/SettingsTab';
 import { ClientPayment } from './components/ClientPayment';
 import { AuthScreen } from './components/AuthScreen';
+import { AdminTab } from './components/AdminTab';
 import { apiRequest } from './api';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'tracker' | 'projects' | 'invoices' | 'reports' | 'settings'>('tracker');
+  const [activeTab, setActiveTab] = useState<'tracker' | 'projects' | 'invoices' | 'reports' | 'settings' | 'admin'>('tracker');
   const [clientInvoiceId, setClientInvoiceId] = useState<string | null>(null);
   
   // App States
@@ -321,6 +322,15 @@ function App() {
             <Settings size={16} />
             <span>Settings</span>
           </button>
+          {currentUser?.role === 'super_admin' && (
+            <button
+              className={`nav-link ${activeTab === 'admin' ? 'active' : ''}`}
+              onClick={() => setActiveTab('admin')}
+            >
+              <Shield size={16} />
+              <span>Admin Panel</span>
+            </button>
+          )}
         </nav>
 
         {/* Quick stats & Developer Sandbox Badge */}
@@ -501,6 +511,10 @@ function App() {
             settings={paypalSettings}
             onSaveSettings={saveSettings}
           />
+        )}
+
+        {activeTab === 'admin' && currentUser?.role === 'super_admin' && (
+          <AdminTab />
         )}
       </main>
     </div>

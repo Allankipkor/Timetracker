@@ -57,8 +57,10 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   createdAt: string;
+  role?: 'super_admin' | 'user';
+  status?: 'approved' | 'pending' | 'rejected';
 }
 
 export interface PayPalSettings {

@@ -3,6 +3,16 @@ import { sql } from './db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    // Perform migrations for existing database tables to add columns safely
+    try {
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';`;
+      await sql`UPDATE users SET role = 'user' WHERE role IS NULL;`;
+      await sql`UPDATE users SET status = 'approved' WHERE status IS NULL;`;
+    } catch (migErr) {
+      console.warn('Migration warnings (columns might already exist):', migErr);
+    }
+
     // 1. Users Table
     await sql`
       CREATE TABLE IF NOT EXISTS users (
@@ -10,6 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name VARCHAR(100) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'user',
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -85,14 +97,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     `;
 
-    // Seeding Guest Sandbox User profile data (so writes don't fail)
+    // Seeding Guest Sandbox User and Admin profile data
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
+    const adminPasswordHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // sha256 of 'admin123'
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
     
     await sql`
-      INSERT INTO users (id, name, email, password_hash)
-      VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash})
-      ON CONFLICT (id) DO NOTHING;
+      INSERT INTO users (id, name, email, password_hash, role, status)
+      VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash}, 'user', 'approved')
+      ON CONFLICT (id) DO UPDATE SET role = 'user', status = 'approved';
+    `;
+
+    await sql`
+      INSERT INTO users (id, name, email, password_hash, role, status)
+      VALUES ('usr_admin', 'System Admin', 'admin@timecamp.com', ${adminPasswordHash}, 'super_admin', 'approved')
+      ON CONFLICT (id) DO UPDATE SET role = 'super_admin', status = 'approved';
     `;
 
     await sql`
@@ -100,6 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       VALUES ('usr_guest', 'guest@example.com', ${defaultClientId}, 'sandbox', 'USD')
       ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
     `;
+
 
     await sql`
       INSERT INTO projects (id, user_id, name, client_name, color, hourly_rate)

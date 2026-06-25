@@ -36,10 +36,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userId = 'usr_' + Math.random().toString(36).substr(2, 9);
     const passwordHash = hashPassword(password);
 
-    // Insert user
+    // Insert user with role 'user' and status 'pending'
     await sql`
-      INSERT INTO users (id, name, email, password_hash)
-      VALUES (${userId}, ${name.trim()}, ${trimmedEmail}, ${passwordHash});
+      INSERT INTO users (id, name, email, password_hash, role, status)
+      VALUES (${userId}, ${name.trim()}, ${trimmedEmail}, ${passwordHash}, 'user', 'pending');
     `;
 
     // Create default PayPal settings for the new user
