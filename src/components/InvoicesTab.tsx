@@ -586,7 +586,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
                   <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Number: {activeInvoice.invoiceNumber}</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6', fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>Trimetracker</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6', fontFamily: 'var(--font-display)', fontStyle: 'italic' }}>Time Tracker</div>
                   <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Time Tracking & Automated Billing</span>
                 </div>
               </div>
@@ -595,7 +595,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
               <div className="responsive-invoice-grid-2">
                 <div>
                   <h4 style={{ color: '#4b5563', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.75rem', marginBottom: '0.5rem' }}>Billed From:</h4>
-                  <strong style={{ fontSize: '0.95rem', color: '#111827' }}>Trimetracker Consultant</strong>
+                  <strong style={{ fontSize: '0.95rem', color: '#111827' }}>Time Tracker Consultant</strong>
                   <p style={{ color: '#6b7280', marginTop: '0.25rem' }}>100 Innovation Way<br />Silicon Valley, CA 94025</p>
                 </div>
                 <div>

@@ -301,7 +301,7 @@ function App() {
       <header className="app-header">
         <div className="logo-section">
           <div className="logo-icon">T</div>
-          <span>Trimetracker</span>
+          <span>Time <span className="logo-highlight">Tracker</span></span>
         </div>
 
         {/* Global Nav tabs */}
