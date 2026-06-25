@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (incomingIds.length > 0) {
         await sql`
           DELETE FROM projects 
-          WHERE user_id = ${userId} AND id NOT IN (${incomingIds});
+          WHERE user_id = ${userId} AND id <> ALL (${incomingIds});
         `;
       } else {
         await sql`
@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (incomingTaskIds.length > 0) {
           await sql`
             DELETE FROM tasks 
-            WHERE project_id = ${p.id} AND id NOT IN (${incomingTaskIds});
+            WHERE project_id = ${p.id} AND id <> ALL (${incomingTaskIds});
           `;
         } else {
           await sql`

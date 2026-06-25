@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (incomingIds.length > 0) {
         await sql`
           DELETE FROM time_entries 
-          WHERE user_id = ${userId} AND id NOT IN (${incomingIds});
+          WHERE user_id = ${userId} AND id <> ALL (${incomingIds});
         `;
       } else {
         await sql`
