@@ -25,14 +25,12 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
   // Dynamic currency variables
   const code = invoice ? invoice.currency : (paypalSettings?.currency || 'USD');
   const symbol = getCurrencySymbol(code);
-  const isMockId = !paypalSettings?.clientId || paypalSettings.clientId.includes('MOCK_CLIENT_ID');
+  const rawClientId = paypalSettings?.clientId;
+  const isMockPlaceholder = !rawClientId || rawClientId.includes('MOCK_CLIENT_ID');
+  const resolvedClientId = isMockPlaceholder ? 'test' : rawClientId;
 
   // PayPal checkout flow states
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
-  const [paypalFlow, setPaypalFlow] = useState<'idle' | 'login' | 'review' | 'card' | 'processing'>('idle');
-  const [buyerEmail, setBuyerEmail] = useState('');
-  const [buyerPassword, setBuyerPassword] = useState('••••••••');
-  const [loginError, setLoginError] = useState<string | null>(null);
   const [isAlreadyPaid, setIsAlreadyPaid] = useState(false);
 
   useEffect(() => {
@@ -554,11 +552,11 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
           </div>
 
           {/* Flows */}
-          {paypalFlow === 'idle' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {!isMockId && paypalSettings ? (
+          {paypalSettings ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
+              <div style={{ width: '100%', maxWidth: '320px', margin: '0.5rem 0' }}>
                 <PayPalScriptProvider options={{ 
-                  clientId: paypalSettings.clientId,
+                  clientId: resolvedClientId,
                   currency: code,
                   intent: "capture"
                 }}>
@@ -594,320 +592,11 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
                     }}
                   />
                 </PayPalScriptProvider>
-              ) : (
-                <>
-                  {/* Log in card */}
-                  <div style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '2rem 1.5rem',
-                    backgroundColor: '#ffffff',
-                    textAlign: 'center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                  }}>
-                    <p style={{ fontSize: '1.1rem', color: '#2c2e2f', marginBottom: '1.25rem', fontWeight: 500 }}>
-                      Log in to your PayPal account
-                    </p>
-                    
-                    <button
-                      onClick={() => setPaypalFlow('login')}
-                      style={{
-                        backgroundColor: '#003087',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '25px',
-                        padding: '0.75rem 1.5rem',
-                        fontWeight: 700,
-                        fontSize: '0.95rem',
-                        cursor: 'pointer',
-                        width: '100%',
-                        maxWidth: '280px',
-                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)'
-                      }}
-                    >
-                      Log In
-                    </button>
-                  </div>
-
-                  {/* Pay with Card card */}
-                  <div style={{
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '1.5rem 1.25rem',
-                    backgroundColor: '#ffffff',
-                    textAlign: 'center',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-                  }}>
-                    <button
-                      onClick={() => setPaypalFlow('card')}
-                      style={{
-                        border: '1.5px solid #003087',
-                        background: 'none',
-                        color: '#003087',
-                        borderRadius: '25px',
-                        padding: '0.7rem 1rem',
-                        fontWeight: 700,
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <CreditCard size={16} />
-                      <span>Pay with a payment card</span>
-                    </button>
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', display: 'block' }}>
-                      or Simply create a PayPal account
-                    </span>
-                  </div>
-                </>
-              )}
+              </div>
             </div>
-          )}
-
-          {/* Login Simulation */}
-          {paypalFlow === 'login' && (
-            <form onSubmit={handleLoginSubmit} style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '1.5rem 1.25rem',
-              backgroundColor: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-            }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', textAlign: 'center', marginBottom: '0.25rem' }}>PayPal Secure Login</h4>
-              
-              {loginError && (
-                <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
-                  {loginError}
-                </div>
-              )}
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Email address</label>
-                <input
-                  type="email"
-                  value={buyerEmail}
-                  onChange={(e) => setBuyerEmail(e.target.value)}
-                  required
-                  style={{ padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Password</label>
-                <input
-                  type="password"
-                  value={buyerPassword}
-                  onChange={(e) => setBuyerPassword(e.target.value)}
-                  required
-                  style={{ padding: '0.55rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.9rem', outline: 'none' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#003087',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '25px',
-                  padding: '0.7rem',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  marginTop: '0.5rem'
-                }}
-              >
-                Log In
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaypalFlow('idle')}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  color: '#64748b',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Cancel
-              </button>
-            </form>
-          )}
-
-          {/* Pay Review simulation */}
-          {paypalFlow === 'review' && (
-            <div style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '1.5rem 1.25rem',
-              backgroundColor: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-            }}>
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>Confirm your payment</h4>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                  Connected as: <strong style={{ color: '#334155' }}>{buyerEmail}</strong>
-                </p>
-              </div>
-              <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Funding:</span>
-                  <strong style={{ color: '#334155' }}>PayPal Balance</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Payee:</span>
-                  <strong style={{ color: '#334155' }}>{paypalSettings?.email}</strong>
-                </div>
-              </div>
-              <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800 }}>
-                <span>Total Amount:</span>
-                <span style={{ color: '#003087' }}>{symbol}{invoice.total.toFixed(2)} {code}</span>
-              </div>
-              
-              <button
-                onClick={handlePayNow}
-                style={{
-                  backgroundColor: '#ffc439',
-                  color: '#111111',
-                  border: 'none',
-                  borderRadius: '25px',
-                  padding: '0.75rem',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  marginTop: '0.5rem',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}
-              >
-                Pay Now
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaypalFlow('idle')}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  color: '#64748b',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Cancel and return to checkout
-              </button>
-            </div>
-          )}
-
-          {/* Card Form Simulation */}
-          {paypalFlow === 'card' && (
-            <form onSubmit={handleCardSubmit} style={{
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '1.5rem 1.25rem',
-              backgroundColor: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.85rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-            }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', textAlign: 'center', marginBottom: '0.25rem' }}>Debit or Credit Card</h4>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Cardholder name</label>
-                <input type="text" placeholder="John Doe" required style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Card number</label>
-                <input type="text" placeholder="4111 1111 1111 1111" required style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Expiry date</label>
-                  <input type="text" placeholder="MM/YY" required style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>CVV</label>
-                  <input type="text" placeholder="123" required style={{ padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.85rem' }} />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#003087',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '25px',
-                  padding: '0.7rem',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  cursor: 'pointer',
-                  marginTop: '0.5rem'
-                }}
-              >
-                Pay {symbol}{invoice.total.toFixed(2)} {code}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaypalFlow('idle')}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  color: '#64748b',
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Cancel
-              </button>
-            </form>
-          )}
-
-          {/* Processing simulated spinner */}
-          {paypalFlow === 'processing' && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '200px',
-              gap: '1rem'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                border: '4px solid rgba(0, 48, 135, 0.1)',
-                borderTop: '4px solid #003087',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }} />
-              <p style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 500 }}>Processing simulated transaction...</p>
-              <style>{`
-                @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-                }
-              `}</style>
+          ) : (
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
+              Loading PayPal checkout...
             </div>
           )}
 

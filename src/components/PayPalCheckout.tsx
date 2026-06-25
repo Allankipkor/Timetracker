@@ -24,7 +24,8 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
 }) => {
   const code = currency || 'USD';
   const symbol = getCurrencySymbol(code);
-  const isMockId = !clientId || clientId.includes('MOCK_CLIENT_ID');
+  const isMockPlaceholder = !clientId || clientId.includes('MOCK_CLIENT_ID');
+  const resolvedClientId = isMockPlaceholder ? 'test' : clientId;
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState<'login' | 'review' | 'processing' | 'success'>('login');
   const [email, setEmail] = useState(clientEmail || 'buyer@example.com');
@@ -65,93 +66,44 @@ export const PayPalCheckout: React.FC<PayPalCheckoutProps> = ({
   return (
     <div className="paypal-integration-container">
       {/* PayPal Smart Buttons */}
-      {!isMockId ? (
-        <div style={{ width: '100%', maxWidth: '320px', margin: '1rem 0' }}>
-          <PayPalScriptProvider options={{ 
-            clientId: clientId,
-            currency: code,
-            intent: "capture"
-          }}>
-            <PayPalButtons
-              style={{ layout: "vertical", height: 38 }}
-              createOrder={(_data, actions) => {
-                return actions.order.create({
-                  intent: "CAPTURE",
-                  purchase_units: [
-                    {
-                      amount: {
-                        currency_code: code,
-                        value: amount.toFixed(2)
-                      },
-                      description: `Invoice ${invoiceId}`
-                    }
-                  ]
+      <div style={{ width: '100%', maxWidth: '320px', margin: '1rem 0' }}>
+        <PayPalScriptProvider options={{ 
+          clientId: resolvedClientId,
+          currency: code,
+          intent: "capture"
+        }}>
+          <PayPalButtons
+            style={{ layout: "vertical", height: 38 }}
+            createOrder={(_data, actions) => {
+              return actions.order.create({
+                intent: "CAPTURE",
+                purchase_units: [
+                  {
+                    amount: {
+                      currency_code: code,
+                      value: amount.toFixed(2)
+                    },
+                    description: `Invoice ${invoiceId}`
+                  }
+                ]
+              });
+            }}
+            onApprove={(_data, actions) => {
+              if (actions.order) {
+                return actions.order.capture().then((details) => {
+                  const txId = details.id || 'PAYID-REAL-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                  onPaymentSuccess(txId);
                 });
-              }}
-              onApprove={(_data, actions) => {
-                if (actions.order) {
-                  return actions.order.capture().then((details) => {
-                    const txId = details.id || 'PAYID-REAL-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-                    onPaymentSuccess(txId);
-                  });
-                }
-                return Promise.resolve();
-              }}
-              onError={(err) => {
-                console.error("PayPal checkout SDK error:", err);
-                alert("Payment processing error. Please check your credentials or sandbox configuration.");
-              }}
-            />
-          </PayPalScriptProvider>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '320px', margin: '1rem 0' }}>
-          <button
-            onClick={handleOpenCheckout}
-            className="paypal-button-yellow"
-            style={{
-              background: '#ffc439',
-              color: '#111',
-              fontWeight: 700,
-              fontSize: '1rem',
-              padding: '0.65rem 1rem',
-              borderRadius: '4px',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }
+              return Promise.resolve();
             }}
-          >
-            <span style={{ fontStyle: 'italic', fontSize: '1.1rem', fontWeight: 900 }}>PayPal</span>
-          </button>
-
-          <button
-            onClick={handleOpenCheckout}
-            className="paypal-button-black"
-            style={{
-              background: '#2c2e2f',
-              color: '#fff',
-              fontWeight: 500,
-              fontSize: '0.9rem',
-              padding: '0.65rem 1rem',
-              borderRadius: '4px',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            onError={(err) => {
+              console.error("PayPal checkout SDK error:", err);
+              alert("Payment processing error. Please check your credentials or sandbox configuration.");
             }}
-          >
-            <CreditCard size={16} />
-            <span>Debit or Credit Card</span>
-          </button>
-        </div>
-      )}
+          />
+        </PayPalScriptProvider>
+      </div>
 
       {/* Simulated PayPal Popup Modal */}
       {isOpen && (
