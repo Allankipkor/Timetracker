@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, CreditCard, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import type { Invoice, Project, PayPalSettings } from '../types';
 import { getCurrencySymbol } from '../types';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
@@ -45,7 +45,6 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
         setInvoice(data.invoice);
         setProject(data.project);
         setPaypalSettings(data.paypalSettings);
-        setBuyerEmail(data.invoice.clientEmail || 'buyer@example.com');
         if (data.invoice.status === 'Paid') {
           setIsAlreadyPaid(true);
         }
@@ -79,42 +78,6 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
       console.error(err);
       alert('Error updating payment status on server. Please contact support.');
     }
-  };
-
-  // Handle Login submission
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!buyerEmail) {
-      setLoginError('Please enter an email address.');
-      return;
-    }
-    setPaypalFlow('processing');
-    setTimeout(() => {
-      setPaypalFlow('review');
-    }, 1200);
-  };
-
-  // Handle pay now action
-  const handlePayNow = () => {
-    setPaypalFlow('processing');
-    setTimeout(() => {
-      const txId = 'PAYID-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-      setPaypalTxId(txId);
-      setPaypalFlow('idle');
-      setShowPayPalReceipt(true);
-    }, 1800);
-  };
-
-  // Handle card payment submit
-  const handleCardSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPaypalFlow('processing');
-    setTimeout(() => {
-      const txId = 'PAYID-CARD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-      setPaypalTxId(txId);
-      setPaypalFlow('idle');
-      setShowPayPalReceipt(true);
-    }, 1800);
   };
 
   // Redirection countdown effect
