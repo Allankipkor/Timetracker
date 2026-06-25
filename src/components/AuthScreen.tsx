@@ -167,7 +167,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               T
             </div>
             <span style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.5px' }}>
-              TimeCamp <span className="logo-highlight">Flow</span>
+              Trimetracker
             </span>
           </div>
           <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 600 }}>

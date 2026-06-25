@@ -120,6 +120,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
     `;
 
+    await sql`
+      INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
+      VALUES ('usr_admin', 'admin@timecamp.com', ${defaultClientId}, 'sandbox', 'USD')
+      ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
+    `;
+
 
     await sql`
       INSERT INTO projects (id, user_id, name, client_name, color, hourly_rate)

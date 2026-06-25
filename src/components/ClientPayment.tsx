@@ -42,7 +42,12 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
       })
       .then(data => {
         setInvoice(data.invoice);
-        setPaypalSettings(data.paypalSettings);
+        setPaypalSettings(data.paypalSettings || {
+          email: data.invoice.clientEmail || 'admin@timecamp.com',
+          clientId: 'test',
+          mode: 'sandbox',
+          currency: data.invoice.currency || 'USD'
+        });
         if (data.invoice.status === 'Paid') {
           setIsAlreadyPaid(true);
         }
@@ -326,7 +331,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
                 <span>Amount</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#1e293b', marginBottom: '0.35rem' }}>
-                <span style={{ fontWeight: 600 }}>TimeCamp Services Summary</span>
+                <span style={{ fontWeight: 600 }}>Trimetracker Services Summary</span>
                 <span>{symbol}{invoice.subtotal.toFixed(2)}</span>
               </div>
               <div style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.25rem', marginBottom: '0.5rem' }}>

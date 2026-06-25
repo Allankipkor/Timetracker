@@ -28,20 +28,39 @@ function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  // Handle client-facing hash routing detection
+  // Handle client-facing routing detection (supporting hash routes and custom domain payment paths)
   useEffect(() => {
-    const checkHashRoute = () => {
+    const checkRoute = () => {
       const hash = window.location.hash;
+      const pathname = window.location.pathname;
+      const searchParams = new URLSearchParams(window.location.search);
+      const paykey = searchParams.get('paykey');
+
       if (hash.startsWith('#/pay/')) {
         const invId = hash.replace('#/pay/', '');
         setClientInvoiceId(invId);
+      } else if (pathname === '/coral/payment' && paykey) {
+        setClientInvoiceId(paykey);
+      } else if (hash.startsWith('#/coral/payment')) {
+        const hashSearch = hash.includes('?') ? hash.split('?')[1] : '';
+        const hashParams = new URLSearchParams(hashSearch);
+        const hashPaykey = hashParams.get('paykey');
+        if (hashPaykey) {
+          setClientInvoiceId(hashPaykey);
+        } else {
+          setClientInvoiceId(null);
+        }
       } else {
         setClientInvoiceId(null);
       }
     };
-    checkHashRoute();
-    window.addEventListener('hashchange', checkHashRoute);
-    return () => window.removeEventListener('hashchange', checkHashRoute);
+    checkRoute();
+    window.addEventListener('hashchange', checkRoute);
+    window.addEventListener('popstate', checkRoute);
+    return () => {
+      window.removeEventListener('hashchange', checkRoute);
+      window.removeEventListener('popstate', checkRoute);
+    };
   }, []);
 
   const handleClientPaymentSuccess = (_invoiceId: string) => {
@@ -282,7 +301,7 @@ function App() {
       <header className="app-header">
         <div className="logo-section">
           <div className="logo-icon">T</div>
-          <span>TimeCamp <span className="logo-highlight">Flow</span></span>
+          <span>Trimetracker</span>
         </div>
 
         {/* Global Nav tabs */}
