@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
-import type { Invoice, Project, PayPalSettings } from '../types';
+import type { Invoice, PayPalSettings } from '../types';
 import { getCurrencySymbol } from '../types';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 
@@ -14,7 +14,6 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
   onPaymentSuccess
 }) => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
   const [paypalSettings, setPaypalSettings] = useState<PayPalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -43,7 +42,6 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
       })
       .then(data => {
         setInvoice(data.invoice);
-        setProject(data.project);
         setPaypalSettings(data.paypalSettings);
         if (data.invoice.status === 'Paid') {
           setIsAlreadyPaid(true);
@@ -74,6 +72,8 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
       if (onPaymentSuccess) {
         onPaymentSuccess(invoiceId);
       }
+      // Redirect to home/login page of the application
+      window.location.href = window.location.origin;
     } catch (err) {
       console.error(err);
       alert('Error updating payment status on server. Please contact support.');
@@ -254,8 +254,6 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
     );
   }
 
-  const merchantName = project?.clientName || 'Time Solutions Sp. z o.o.';
-
   // Render High-Fidelity PayPal Success Page (mimicking screenshot)
   if (showPayPalReceipt) {
     return (
@@ -388,12 +386,12 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
                 margin: '0 auto 0.75rem'
               }}
             >
-              Return to {merchantName}
+              Return to PayPal
             </button>
 
             {invoice.status !== 'Paid' ? (
               <p style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
-                You will be redirected to {merchantName} in {redirectCountdown} seconds...
+                You will be redirected to PayPal in {redirectCountdown} seconds...
               </p>
             ) : (
               <p style={{ fontSize: '0.75rem', color: '#6b7280', fontStyle: 'italic' }}>
@@ -517,7 +515,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
           {/* Flows */}
           {paypalSettings ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', alignItems: 'center' }}>
-              <div style={{ width: '100%', maxWidth: '320px', margin: '0.5rem 0' }}>
+              <div style={{ width: '100%', maxWidth: '100%', padding: '0 0.5rem', boxSizing: 'border-box', margin: '0.5rem 0' }}>
                 <PayPalScriptProvider options={{ 
                   clientId: resolvedClientId,
                   currency: code,
