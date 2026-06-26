@@ -14,8 +14,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. GET Method: Retrieve merchant paybill/till settings
     if (req.method === 'GET') {
+      const userId = req.headers['x-user-id'] as string;
+      let isAdmin = false;
+      if (userId) {
+        const adminCheck = await sql`
+          SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+        `;
+        isAdmin = adminCheck.rows.length > 0 && adminCheck.rows[0].role === 'super_admin';
+      }
+
       const result = await sql`
-        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate
+        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate, intasend_public_key, intasend_live, intasend_secret_key, paystack_public_key, paystack_live, paystack_secret_key
         FROM merchant_billing_settings
         WHERE id = 'primary'
         LIMIT 1;
@@ -27,7 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           paybillNumber: '400222',
           tillNumber: '511234',
           bankName: 'Lipa na M-Pesa (Paybill)',
-          usdToKesRate: 130.00
+          usdToKesRate: 130.00,
+          intasendPublicKey: '',
+          intasendLive: false,
+          intasendSecretKey: '',
+          paystackPublicKey: '',
+          paystackLive: false,
+          paystackSecretKey: ''
         });
       }
 
@@ -36,7 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paybillNumber: settings.paybill_number,
         tillNumber: settings.till_number,
         bankName: settings.bank_name,
-        usdToKesRate: parseFloat(settings.usd_to_kes_rate)
+        usdToKesRate: parseFloat(settings.usd_to_kes_rate),
+        intasendPublicKey: settings.intasend_public_key || '',
+        intasendLive: !!settings.intasend_live,
+        intasendSecretKey: isAdmin ? (settings.intasend_secret_key || '') : undefined,
+        paystackPublicKey: settings.paystack_public_key || '',
+        paystackLive: !!settings.paystack_live,
+        paystackSecretKey: isAdmin ? (settings.paystack_secret_key || '') : undefined
       });
     }
 
@@ -56,20 +77,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
       }
 
-      const { paybillNumber, tillNumber, bankName, usdToKesRate } = req.body;
+      const { 
+        paybillNumber, 
+        tillNumber, 
+        bankName, 
+        usdToKesRate, 
+        intasendPublicKey, 
+        intasendLive, 
+        intasendSecretKey,
+        paystackPublicKey,
+        paystackLive,
+        paystackSecretKey
+      } = req.body;
 
       if (paybillNumber === undefined || tillNumber === undefined || !bankName || !usdToKesRate) {
         return res.status(400).json({ error: 'Missing required configuration parameters' });
       }
 
       await sql`
-        INSERT INTO merchant_billing_settings (id, paybill_number, till_number, bank_name, usd_to_kes_rate)
-        VALUES ('primary', ${paybillNumber.trim()}, ${tillNumber.trim()}, ${bankName.trim()}, ${usdToKesRate})
+        INSERT INTO merchant_billing_settings (
+          id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
+          intasend_public_key, intasend_live, intasend_secret_key,
+          paystack_public_key, paystack_live, paystack_secret_key
+        )
+        VALUES (
+          'primary', 
+          ${paybillNumber.trim()}, 
+          ${tillNumber.trim()}, 
+          ${bankName.trim()}, 
+          ${usdToKesRate}, 
+          ${intasendPublicKey ? intasendPublicKey.trim() : ''}, 
+          ${!!intasendLive}, 
+          ${intasendSecretKey ? intasendSecretKey.trim() : ''},
+          ${paystackPublicKey ? paystackPublicKey.trim() : ''}, 
+          ${!!paystackLive}, 
+          ${paystackSecretKey ? paystackSecretKey.trim() : ''}
+        )
         ON CONFLICT (id) DO UPDATE SET
           paybill_number = EXCLUDED.paybill_number,
           till_number = EXCLUDED.till_number,
           bank_name = EXCLUDED.bank_name,
-          usd_to_kes_rate = EXCLUDED.usd_to_kes_rate;
+          usd_to_kes_rate = EXCLUDED.usd_to_kes_rate,
+          intasend_public_key = EXCLUDED.intasend_public_key,
+          intasend_live = EXCLUDED.intasend_live,
+          intasend_secret_key = EXCLUDED.intasend_secret_key,
+          paystack_public_key = EXCLUDED.paystack_public_key,
+          paystack_live = EXCLUDED.paystack_live,
+          paystack_secret_key = EXCLUDED.paystack_secret_key;
       `;
 
       return res.status(200).json({ status: 'success', message: 'Merchant billing configurations updated' });

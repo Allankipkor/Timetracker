@@ -23,6 +23,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [tillNumber, setTillNumber] = useState('');
   const [bankName, setBankName] = useState('');
   const [usdToKesRate, setUsdToKesRate] = useState(130);
+  const [paystackPublicKey, setPaystackPublicKey] = useState('');
+  const [paystackSecretKey, setPaystackSecretKey] = useState('');
+  const [paystackLive, setPaystackLive] = useState(false);
   const [billingSaved, setBillingSaved] = useState(false);
   const [billingError, setBillingError] = useState('');
 
@@ -36,6 +39,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           setTillNumber(data.tillNumber || '');
           setBankName(data.bankName || '');
           setUsdToKesRate(data.usdToKesRate || 130);
+          setPaystackPublicKey(data.paystackPublicKey || '');
+          setPaystackSecretKey(data.paystackSecretKey || '');
+          setPaystackLive(!!data.paystackLive);
         })
         .catch(err => {
           console.error('Failed to load merchant billing settings:', err);
@@ -82,7 +88,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           paybillNumber,
           tillNumber,
           bankName,
-          usdToKesRate: Number(usdToKesRate)
+          usdToKesRate: Number(usdToKesRate),
+          paystackPublicKey,
+          paystackSecretKey,
+          paystackLive
         })
       });
       setBillingSaved(true);
@@ -340,6 +349,41 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                 required
               />
             </div>
+          </div>
+
+          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
+            Paystack Card Gateway Configuration
+          </h4>
+
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>Paystack Public Key</label>
+              <input
+                type="text"
+                className="form-control"
+                value={paystackPublicKey}
+                onChange={(e) => setPaystackPublicKey(e.target.value)}
+                placeholder="pk_test_..."
+              />
+            </div>
+            <div className="form-group">
+              <label>Paystack Secret Key</label>
+              <input
+                type="password"
+                className="form-control"
+                value={paystackSecretKey}
+                onChange={(e) => setPaystackSecretKey(e.target.value)}
+                placeholder="sk_test_..."
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Gateway Mode</label>
+            <select value={paystackLive ? 'live' : 'sandbox'} onChange={(e) => setPaystackLive(e.target.value === 'live')}>
+              <option value="sandbox">Sandbox (Testing / Simulator)</option>
+              <option value="live">Live Production (Real Transactions)</option>
+            </select>
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>

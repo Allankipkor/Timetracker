@@ -16,12 +16,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Card checkout inputs
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [cardName, setCardName] = useState('');
-
   // Paybill checkout inputs
   const [transactionCode, setTransactionCode] = useState('');
 
@@ -38,24 +32,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setSelectedPlan(plan);
     setError(null);
     setSuccessMessage(null);
-    setCardNumber('');
-    setExpiry('');
-    setCvc('');
-    setCardName('');
     setTransactionCode('');
     setActiveCheckoutTab('card');
   };
 
-  const handleCardPaymentSubmit = async (e: React.FormEvent) => {
+  const handlePaystackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlan) return;
-    
-    if (cardNumber.replace(/\s/g, '').length < 16) {
-      setError('Please enter a valid 16-digit card number.');
-      return;
-    }
-    if (!expiry || !cvc || !cardName) {
-      setError('Please complete all card details.');
+    if (!billingSettings?.paystackPublicKey) {
+      setError('Payment gateway is not configured by the administrator.');
       return;
     }
 
@@ -63,25 +48,61 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setError(null);
 
     try {
-      const response = await apiRequest<{ status: string; message: string; user: User }>('/billing/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({
-          planTier: selectedPlan,
-          paymentMethod: 'card'
-        })
+      if (!(window as any).PaystackPop) {
+        throw new Error('Paystack Payment SDK failed to load. Please refresh the page.');
+      }
+
+      const paystack = new (window as any).PaystackPop();
+      const planPrice = getPlanPrice(selectedPlan);
+      // Paystack amount is in cents
+      const amountInCents = Math.round(planPrice * 100);
+
+      paystack.newTransaction({
+        key: billingSettings.paystackPublicKey,
+        email: currentUser?.email || 'customer@example.com',
+        amount: amountInCents,
+        currency: 'USD',
+        ref: 'TR-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now(),
+        onSuccess: async (transaction: any) => {
+          console.log('Paystack payment success:', transaction);
+          setLoading(true);
+          try {
+            const response = await apiRequest<{ status: string; message: string; user: User }>('/billing/subscribe', {
+              method: 'POST',
+              body: JSON.stringify({
+                planTier: selectedPlan,
+                paymentMethod: 'card',
+                transactionCode: transaction.reference
+              })
+            });
+
+            if (response.status === 'success') {
+              onUpdateUser(response.user);
+              localStorage.setItem('timecamp_current_user', JSON.stringify(response.user));
+              setSuccessMessage('Subscription activated successfully! Your plan is now active.');
+            } else {
+              setError(response.message || 'Payment verification failed.');
+            }
+          } catch (err: any) {
+            setError(err.message || 'An error occurred during verification.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        onCancel: () => {
+          console.log('Paystack checkout closed');
+          setError('Payment checkout cancelled.');
+          setLoading(false);
+        },
+        onError: (err: any) => {
+          console.error('Paystack error:', err);
+          setError(err.message || 'An error occurred during Paystack initialization.');
+          setLoading(false);
+        }
       });
 
-      if (response.status === 'success') {
-        onUpdateUser(response.user);
-        // Persist local storage update
-        localStorage.setItem('timecamp_current_user', JSON.stringify(response.user));
-        setSuccessMessage('Subscription activated successfully! Your plan is now active.');
-      } else {
-        setError(response.message || 'Payment simulation failed.');
-      }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during card processing.');
-    } finally {
+      setError(err.message || 'Could not launch payment gateway.');
       setLoading(false);
     }
   };
@@ -134,30 +155,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     return 'Free Tier';
   };
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || '';
-    const parts = [];
 
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    if (parts.length > 0) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
 
   const activeTier = currentUser?.subscriptionTier || 'free';
   const isActive = currentUser?.subscriptionStatus === 'active';
@@ -549,76 +547,61 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                   </div>
                 )}
 
-                {/* Card simulation form */}
+                {/* Paystack Checkout panel */}
                 {activeCheckoutTab === 'card' && (
-                  <form onSubmit={handleCardPaymentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div className="form-group">
-                      <label>Cardholder Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="John Doe"
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Card Number</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="0000 0000 0000 0000"
-                        maxLength={19}
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label>Expiry Date</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          value={expiry}
-                          onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                          required
-                        />
+                  <form onSubmit={handlePaystackSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center', padding: '1rem 0' }}>
+                    <div style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '12px',
+                      padding: '1.5rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--accent)',
+                        marginBottom: '0.25rem'
+                      }}>
+                        <CreditCard size={24} />
                       </div>
-                      <div className="form-group">
-                        <label>CVC / CVV</label>
-                        <input
-                          type="password"
-                          className="form-control"
-                          placeholder="•••"
-                          maxLength={4}
-                          value={cvc}
-                          onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, ''))}
-                          required
-                        />
-                      </div>
+                      
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Secure Credit/Debit Card Checkout
+                      </span>
+                      
+                      <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                        You will be redirected to the secure Paystack checkout portal to complete your payment. Paystack supports Visa, Mastercard, and American Express.
+                      </p>
                     </div>
 
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      style={{ marginTop: '1rem', padding: '0.75rem', justifyContent: 'center' }}
+                      style={{ marginTop: '1rem', padding: '0.85rem', justifyContent: 'center', fontWeight: 600, fontSize: '0.95rem' }}
                       disabled={loading}
                     >
                       {loading ? (
                         <>
                           <RefreshCw size={16} className="animate-spin" />
-                          <span>Simulating transaction...</span>
+                          <span>Initializing Gateway...</span>
                         </>
                       ) : (
-                        <span>Pay ${getPlanPrice(selectedPlan).toFixed(2)} (Mock Sandbox Upgrade)</span>
+                        <span>Pay ${getPlanPrice(selectedPlan).toFixed(2)} with Paystack</span>
                       )}
                     </button>
+                    
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      🔒 Secured by Paystack (a Stripe Company). Your credentials are never stored.
+                    </span>
                   </form>
                 )}
 

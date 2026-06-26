@@ -17,6 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`UPDATE users SET subscription_status = 'active' WHERE subscription_status IS NULL;`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paypal_client_id VARCHAR(255) NOT NULL DEFAULT 'test';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paypal_mode VARCHAR(20) NOT NULL DEFAULT 'sandbox';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS intasend_public_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS intasend_live BOOLEAN NOT NULL DEFAULT FALSE;`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS intasend_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_public_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_live BOOLEAN NOT NULL DEFAULT FALSE;`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -118,7 +124,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         bank_name VARCHAR(100) NOT NULL DEFAULT 'Lipa na M-Pesa (Paybill)',
         usd_to_kes_rate DECIMAL(10, 2) NOT NULL DEFAULT 130.00,
         paypal_client_id VARCHAR(255) NOT NULL DEFAULT 'test',
-        paypal_mode VARCHAR(20) NOT NULL DEFAULT 'sandbox'
+        paypal_mode VARCHAR(20) NOT NULL DEFAULT 'sandbox',
+        intasend_public_key VARCHAR(255) NOT NULL DEFAULT '',
+        intasend_live BOOLEAN NOT NULL DEFAULT FALSE,
+        intasend_secret_key VARCHAR(255) NOT NULL DEFAULT '',
+        paystack_public_key VARCHAR(255) NOT NULL DEFAULT '',
+        paystack_live BOOLEAN NOT NULL DEFAULT FALSE,
+        paystack_secret_key VARCHAR(255) NOT NULL DEFAULT ''
       );
     `;
 
@@ -138,8 +150,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Seed default merchant billing details
     await sql`
-      INSERT INTO merchant_billing_settings (id, paybill_number, till_number, bank_name, usd_to_kes_rate, paypal_client_id, paypal_mode)
-      VALUES ('primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00, 'test', 'sandbox')
+      INSERT INTO merchant_billing_settings (
+        id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
+        paypal_client_id, paypal_mode, 
+        intasend_public_key, intasend_live, intasend_secret_key,
+        paystack_public_key, paystack_live, paystack_secret_key
+      )
+      VALUES (
+        'primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00, 
+        'test', 'sandbox', 
+        '', false, '',
+        '', false, ''
+      )
       ON CONFLICT (id) DO NOTHING;
     `;
 

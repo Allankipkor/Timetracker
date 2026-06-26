@@ -45,13 +45,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 1. Card Checkout: Instant Simulation approval
     if (paymentMethod === 'card') {
-      const generatedCode = 'CARD-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      if (!transactionCode) {
+        return res.status(400).json({ error: 'Missing transaction code reference.' });
+      }
+
+      const settingsResult = await sql`
+        SELECT paystack_secret_key, paystack_live FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+      `;
+      const secretKey = settingsResult.rows.length > 0 ? settingsResult.rows[0].paystack_secret_key : '';
+      
+      if (!secretKey) {
+        return res.status(400).json({ error: 'Card payment gateway is not configured by the administrator.' });
+      }
+
+      // Check for duplicate transaction codes
+      const dupCheck = await sql`
+        SELECT id FROM subscription_payments WHERE transaction_code = ${transactionCode} LIMIT 1;
+      `;
+      if (dupCheck.rows.length > 0) {
+        return res.status(409).json({ error: 'This payment transaction reference has already been processed.' });
+      }
+
+      // Verify the transaction with Paystack
+      const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${transactionCode}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${secretKey}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!verifyRes.ok) {
+        const errText = await verifyRes.text();
+        return res.status(400).json({ error: `Paystack validation failed: ${errText}` });
+      }
+
+      const verifyData = await verifyRes.json();
+      
+      if (!verifyData.status || verifyData.data.status !== 'success') {
+        return res.status(400).json({ 
+          error: `Transaction verification failed. Status: ${verifyData?.data?.status || 'unknown'}` 
+        });
+      }
+
       const expiresInterval = planTier === 'premium_weekly' ? '7 days' : '30 days';
 
       // Insert approved payment log
       await sql`
         INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
-        VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'card', ${generatedCode}, 'approved');
+        VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'card', ${transactionCode}, 'approved');
       `;
 
       // Update user subscription state

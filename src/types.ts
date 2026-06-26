@@ -71,6 +71,12 @@ export interface BillingSettings {
   tillNumber: string;
   bankName: string;
   usdToKesRate: number;
+  intasendPublicKey?: string;
+  intasendLive?: boolean;
+  intasendSecretKey?: string;
+  paystackPublicKey?: string;
+  paystackSecretKey?: string;
+  paystackLive?: boolean;
 }
 
 export interface SubscriptionPayment {
