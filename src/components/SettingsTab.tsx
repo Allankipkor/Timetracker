@@ -5,7 +5,7 @@ import { apiRequest } from '../api';
 
 interface SettingsTabProps {
   settings: PayPalSettings;
-  onSaveSettings: (settings: PayPalSettings) => void;
+  onSaveSettings: (settings: PayPalSettings) => Promise<void>;
   currentUser: User | null;
 }
 
@@ -15,6 +15,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [mode, setMode] = useState<'sandbox' | 'live'>(settings.mode);
   const [currency, setCurrency] = useState(settings.currency || 'USD');
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Billing Settings (Admin-only)
   const [paybillNumber, setPaybillNumber] = useState('');
@@ -41,16 +43,33 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
     }
   }, [isAdmin]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Sync settings prop to local state inputs when loaded/updated
+  useEffect(() => {
+    setEmail(settings.email);
+    setClientId(settings.clientId);
+    setMode(settings.mode);
+    setCurrency(settings.currency || 'USD');
+  }, [settings]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSettings({
-      email,
-      clientId,
-      mode,
-      currency
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+    setErrorMsg('');
+    setSaved(false);
+    try {
+      await onSaveSettings({
+        email,
+        clientId,
+        mode,
+        currency
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save PayPal settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBillingSubmit = async (e: React.FormEvent) => {
@@ -101,6 +120,18 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           }}>
             <CheckCircle size={16} />
             <span>PayPal merchant settings saved successfully!</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#f87171',
+            padding: '0.75rem 1rem',
+            borderRadius: '6px',
+            fontSize: '0.85rem'
+          }}>
+            {errorMsg}
           </div>
         )}
 
@@ -216,9 +247,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           </div>
         </div>
 
-        <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
+        <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }} disabled={saving}>
           <Save size={16} />
-          <span>Save PayPal Settings</span>
+          <span>{saving ? 'Saving...' : 'Save PayPal Settings'}</span>
         </button>
       </form>
 

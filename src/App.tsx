@@ -186,6 +186,7 @@ function App() {
       });
     } catch (err) {
       console.error('Failed to sync settings to database:', err);
+      throw err;
     }
   };
 
