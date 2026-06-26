@@ -15,6 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`UPDATE users SET status = 'approved' WHERE status IS NULL;`;
       await sql`UPDATE users SET subscription_tier = 'premium_weekly' WHERE subscription_tier IS NULL;`;
       await sql`UPDATE users SET subscription_status = 'active' WHERE subscription_status IS NULL;`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paypal_client_id VARCHAR(255) NOT NULL DEFAULT 'test';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paypal_mode VARCHAR(20) NOT NULL DEFAULT 'sandbox';`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -114,7 +116,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paybill_number VARCHAR(50) NOT NULL DEFAULT '',
         till_number VARCHAR(50) NOT NULL DEFAULT '',
         bank_name VARCHAR(100) NOT NULL DEFAULT 'Lipa na M-Pesa (Paybill)',
-        usd_to_kes_rate DECIMAL(10, 2) NOT NULL DEFAULT 130.00
+        usd_to_kes_rate DECIMAL(10, 2) NOT NULL DEFAULT 130.00,
+        paypal_client_id VARCHAR(255) NOT NULL DEFAULT 'test',
+        paypal_mode VARCHAR(20) NOT NULL DEFAULT 'sandbox'
       );
     `;
 
@@ -134,8 +138,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Seed default merchant billing details
     await sql`
-      INSERT INTO merchant_billing_settings (id, paybill_number, till_number, bank_name, usd_to_kes_rate)
-      VALUES ('primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00)
+      INSERT INTO merchant_billing_settings (id, paybill_number, till_number, bank_name, usd_to_kes_rate, paypal_client_id, paypal_mode)
+      VALUES ('primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00, 'test', 'sandbox')
       ON CONFLICT (id) DO NOTHING;
     `;
 

@@ -36,6 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT * FROM projects WHERE id = ${invoice.project_id} LIMIT 1;
       `;
 
+      // Fetch global merchant billing settings for paypal defaults
+      const globalRes = await sql`
+        SELECT paypal_client_id, paypal_mode FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+      `;
+      const globalClientId = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_client_id : 'test';
+      const globalMode = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_mode : 'sandbox';
+
       // Fetch owner paypal settings
       const settingsResult = await sql`
         SELECT * FROM paypal_settings WHERE user_id = ${ownerUserId} LIMIT 1;
@@ -67,12 +74,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         hourlyRate: parseFloat(projectResult.rows[0].hourly_rate)
       } : null;
 
-      const formattedSettings = settingsResult.rows.length > 0 ? {
-        email: settingsResult.rows[0].email,
-        clientId: settingsResult.rows[0].client_id,
-        mode: settingsResult.rows[0].mode,
-        currency: settingsResult.rows[0].currency
-      } : null;
+      const formattedSettings = {
+        email: settingsResult.rows.length > 0 ? settingsResult.rows[0].email : '',
+        clientId: globalClientId,
+        mode: globalMode,
+        currency: settingsResult.rows.length > 0 ? settingsResult.rows[0].currency : invoice.currency
+      };
 
       return res.status(200).json({
         invoice: formattedInvoice,

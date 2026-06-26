@@ -122,31 +122,65 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           </span>
         </div>
 
-        <div className="form-group">
-          <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Key size={14} />
-            <span>PayPal REST Client ID</span>
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            placeholder="Aef_..."
-            required
-          />
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Your credential key fetched from the PayPal Developer Dashboard under Apps & Credentials.
-          </span>
-        </div>
+        {isAdmin ? (
+          <>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Key size={14} />
+                <span>PayPal REST Client ID (Global Admin Config)</span>
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="Aef_..."
+                required
+              />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Your credential key fetched from the PayPal Developer Dashboard under Apps & Credentials. Applies to all users globally.
+              </span>
+            </div>
 
-        <div className="form-group">
-          <label>Integration Mode</label>
-          <select value={mode} onChange={(e) => setMode(e.target.value as any)}>
-            <option value="sandbox">Sandbox (Testing Simulator - Recommended)</option>
-            <option value="live">Live Production (Real Transactions)</option>
-          </select>
-        </div>
+            <div className="form-group">
+              <label>Integration Mode (Global Admin Config)</label>
+              <select value={mode} onChange={(e) => setMode(e.target.value as any)}>
+                <option value="sandbox">Sandbox (Testing Simulator - Recommended)</option>
+                <option value="live">Live Production (Real Transactions)</option>
+              </select>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)' }}>
+                <Key size={14} />
+                <span>Global PayPal Client ID (Read-only)</span>
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                value={clientId}
+                disabled
+                style={{ opacity: 0.6, cursor: 'not-allowed', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}
+              />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                This is the global PayPal client application credential configured by the administrator.
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label style={{ color: 'var(--text-muted)' }}>Integration Mode (Read-only)</label>
+              <input
+                type="text"
+                className="form-control"
+                value={mode === 'sandbox' ? 'Sandbox Mode (Testing Simulator)' : 'Live Production Mode'}
+                disabled
+                style={{ opacity: 0.6, cursor: 'not-allowed', backgroundColor: 'rgba(255, 255, 255, 0.02)' }}
+              />
+            </div>
+          </>
+        )}
 
         <div className="form-group">
           <label>Default Invoice Currency</label>

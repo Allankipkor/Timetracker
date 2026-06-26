@@ -17,21 +17,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Load current global settings
+    const globalRes = await sql`
+      SELECT paypal_client_id, paypal_mode FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+    `;
+    const globalClientId = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_client_id : 'test';
+    const globalMode = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_mode : 'sandbox';
+
     if (req.method === 'GET') {
       const result = await sql`
         SELECT * FROM paypal_settings WHERE user_id = ${userId} LIMIT 1;
       `;
 
       if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'PayPal settings not found' });
+        // Fallback default response
+        return res.status(200).json({
+          email: '',
+          clientId: globalClientId,
+          mode: globalMode,
+          currency: 'USD'
+        });
       }
 
       const settings = result.rows[0];
 
       return res.status(200).json({
         email: settings.email,
-        clientId: settings.client_id,
-        mode: settings.mode,
+        clientId: globalClientId, // always return global
+        mode: globalMode,         // always return global
         currency: settings.currency
       });
     }
@@ -39,13 +52,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const { email, clientId, mode, currency } = req.body;
 
-      if (!email || !clientId || !mode || !currency) {
+      if (!email || !currency) {
         return res.status(400).json({ error: 'Missing required settings parameters' });
       }
 
+      // Check if user is admin
+      const userRes = await sql`
+        SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+      `;
+      const isAdmin = userRes.rows.length > 0 && userRes.rows[0].role === 'super_admin';
+
+      let activeClientId = globalClientId;
+      let activeMode = globalMode;
+
+      if (isAdmin && clientId && mode) {
+        // Update global credentials
+        await sql`
+          UPDATE merchant_billing_settings
+          SET paypal_client_id = ${clientId.trim()}, paypal_mode = ${mode.trim()}
+          WHERE id = 'primary';
+        `;
+        activeClientId = clientId.trim();
+        activeMode = mode.trim();
+      }
+
+      // Save user specific paypal config
       await sql`
         INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
-        VALUES (${userId}, ${email}, ${clientId}, ${mode}, ${currency})
+        VALUES (${userId}, ${email.trim()}, ${activeClientId}, ${activeMode}, ${currency.trim()})
         ON CONFLICT (user_id) DO UPDATE SET
           email = EXCLUDED.email,
           client_id = EXCLUDED.client_id,
