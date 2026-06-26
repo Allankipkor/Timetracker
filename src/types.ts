@@ -61,6 +61,29 @@ export interface User {
   createdAt: string;
   role?: 'super_admin' | 'user';
   status?: 'approved' | 'pending' | 'rejected';
+  subscriptionTier?: string;
+  subscriptionStatus?: 'active' | 'inactive';
+  subscriptionExpiresAt?: string | null;
+}
+
+export interface BillingSettings {
+  paybillNumber: string;
+  tillNumber: string;
+  bankName: string;
+  usdToKesRate: number;
+}
+
+export interface SubscriptionPayment {
+  id: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  planTier: string;
+  amount: number;
+  paymentMethod: string;
+  transactionCode: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
 }
 
 export interface PayPalSettings {

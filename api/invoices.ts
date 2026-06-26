@@ -140,6 +140,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Body must be an array of invoices' });
       }
 
+      // Check subscription tier daily invoice limits
+      const userResult = await sql`
+        SELECT subscription_tier, subscription_status, subscription_expires_at 
+        FROM users WHERE id = ${userId} LIMIT 1;
+      `;
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+        let tier = user.subscription_tier || 'free';
+        const subStatus = user.subscription_status || 'inactive';
+        const expiresAt = user.subscription_expires_at;
+
+        // If subscription is expired or inactive, fall back to free tier
+        if (subStatus !== 'active' || (expiresAt && new Date(expiresAt) < new Date())) {
+          tier = 'free';
+        }
+
+        let limit = 1; // Free tier
+        if (tier === 'basic_monthly') limit = 3;
+        else if (tier === 'standard_monthly') limit = 6;
+        else if (tier === 'premium_weekly') limit = 999999; // Unlimited
+
+        // Get existing invoices to detect new ones
+        const existingInvoicesResult = await sql`
+          SELECT id, date FROM invoices WHERE user_id = ${userId};
+        `;
+        const existingIds = new Set(existingInvoicesResult.rows.map(r => r.id));
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const dbInvoicesTodayCount = existingInvoicesResult.rows.filter(row => {
+          const rowDateStr = new Date(row.date).toISOString().split('T')[0];
+          return rowDateStr === todayStr;
+        }).length;
+
+        const incomingNewTodayCount = invoicesList.filter(inv => {
+          if (existingIds.has(inv.id)) return false;
+          const invDateStr = new Date(inv.date).toISOString().split('T')[0];
+          return invDateStr === todayStr;
+        }).length;
+
+        if (dbInvoicesTodayCount + incomingNewTodayCount > limit) {
+          return res.status(402).json({
+            error: `Daily invoice limit reached for your plan (${limit} per day). Please upgrade your subscription plan to create more invoices today.`
+          });
+        }
+      }
+
       const incomingIds = invoicesList.map(inv => inv.id);
 
       // Deletions: Remove invoices not in incoming list

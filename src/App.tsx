@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Folder, FileText, BarChart3, Settings, Shield, LogOut } from 'lucide-react';
+import { Clock, Folder, FileText, BarChart3, Settings, Shield, LogOut, CreditCard, AlertCircle } from 'lucide-react';
 import type { TimeEntry, Project, Invoice, PayPalSettings, User } from './types';
 import { MOCK_PAYPAL_SETTINGS } from './mockData';
 
@@ -12,10 +12,11 @@ import { SettingsTab } from './components/SettingsTab';
 import { ClientPayment } from './components/ClientPayment';
 import { AuthScreen } from './components/AuthScreen';
 import { AdminTab } from './components/AdminTab';
+import { BillingTab } from './components/BillingTab';
 import { apiRequest } from './api';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'tracker' | 'projects' | 'invoices' | 'reports' | 'settings' | 'admin'>('tracker');
+  const [activeTab, setActiveTab] = useState<'tracker' | 'projects' | 'invoices' | 'reports' | 'settings' | 'admin' | 'billing'>('tracker');
   const [clientInvoiceId, setClientInvoiceId] = useState<string | null>(null);
   
   // App States
@@ -27,6 +28,10 @@ function App() {
   // Authentication & Dropdown states
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+  // Upgrade warning modals
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeErrorMsg, setUpgradeErrorMsg] = useState('');
 
   // Handle client-facing routing detection (supporting hash routes and custom domain payment paths)
   useEffect(() => {
@@ -156,8 +161,18 @@ function App() {
         method: 'POST',
         body: JSON.stringify(updated)
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to sync invoices to database:', err);
+      if (err.message && err.message.includes('limit reached')) {
+        setUpgradeErrorMsg(err.message);
+        setShowUpgradeModal(true);
+        // Rollback local state from db to remove the failed unsynced draft
+        apiRequest<Invoice[]>('/invoices')
+          .then(setInvoices)
+          .catch(e => console.error('Failed to rollback invoices:', e));
+      } else {
+        alert(err.message || 'Failed to sync invoices.');
+      }
     }
   };
 
@@ -333,6 +348,13 @@ function App() {
           >
             <BarChart3 size={16} />
             <span>Reports</span>
+          </button>
+           <button
+            className={`nav-link ${activeTab === 'billing' ? 'active' : ''}`}
+            onClick={() => setActiveTab('billing')}
+          >
+            <CreditCard size={16} />
+            <span>Billing</span>
           </button>
           <button
             className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`}
@@ -529,6 +551,14 @@ function App() {
           <SettingsTab
             settings={paypalSettings}
             onSaveSettings={saveSettings}
+            currentUser={currentUser}
+          />
+        )}
+
+        {activeTab === 'billing' && (
+          <BillingTab
+            currentUser={currentUser}
+            onUpdateUser={(updatedUser) => setCurrentUser(updatedUser)}
           />
         )}
 
@@ -536,6 +566,60 @@ function App() {
           <AdminTab />
         )}
       </main>
+
+      {showUpgradeModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(5px)',
+          zIndex: 1100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div className="card" style={{
+            width: '100%',
+            maxWidth: '480px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.25rem'
+          }}>
+            <AlertCircle size={48} style={{ color: 'var(--warning)' }} />
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>Daily Limit Reached</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              {upgradeErrorMsg}
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  setShowUpgradeModal(false);
+                  setActiveTab('billing');
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                View Subscription Plans
+              </button>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="btn btn-secondary"
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

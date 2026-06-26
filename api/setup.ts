@@ -7,8 +7,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_tier VARCHAR(30) DEFAULT 'free';`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'inactive';`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL;`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_id VARCHAR(100) NULL;`;
       await sql`UPDATE users SET role = 'user' WHERE role IS NULL;`;
       await sql`UPDATE users SET status = 'approved' WHERE status IS NULL;`;
+      await sql`UPDATE users SET subscription_tier = 'premium_weekly' WHERE subscription_tier IS NULL;`;
+      await sql`UPDATE users SET subscription_status = 'active' WHERE subscription_status IS NULL;`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -22,6 +28,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'user',
         status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        subscription_tier VARCHAR(30) NOT NULL DEFAULT 'free',
+        subscription_status VARCHAR(20) NOT NULL DEFAULT 'inactive',
+        subscription_expires_at TIMESTAMP NULL,
+        subscription_id VARCHAR(100) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -97,21 +107,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     `;
 
+    // 7. Merchant Billing Settings Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS merchant_billing_settings (
+        id VARCHAR(50) PRIMARY KEY DEFAULT 'primary',
+        paybill_number VARCHAR(50) NOT NULL DEFAULT '',
+        till_number VARCHAR(50) NOT NULL DEFAULT '',
+        bank_name VARCHAR(100) NOT NULL DEFAULT 'Lipa na M-Pesa (Paybill)',
+        usd_to_kes_rate DECIMAL(10, 2) NOT NULL DEFAULT 130.00
+      );
+    `;
+
+    // 8. Subscription Payments Table
+    await sql`
+      CREATE TABLE IF NOT EXISTS subscription_payments (
+        id VARCHAR(50) PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_tier VARCHAR(30) NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        payment_method VARCHAR(20) NOT NULL,
+        transaction_code VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    // Seed default merchant billing details
+    await sql`
+      INSERT INTO merchant_billing_settings (id, paybill_number, till_number, bank_name, usd_to_kes_rate)
+      VALUES ('primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00)
+      ON CONFLICT (id) DO NOTHING;
+    `;
+
     // Seeding Guest Sandbox User and Admin profile data
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
     const adminPasswordHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // sha256 of 'admin123'
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
     
     await sql`
-      INSERT INTO users (id, name, email, password_hash, role, status)
-      VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash}, 'user', 'approved')
-      ON CONFLICT (id) DO UPDATE SET role = 'user', status = 'approved';
+      INSERT INTO users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
+      VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash}, 'user', 'approved', 'premium_weekly', 'active')
+      ON CONFLICT (id) DO UPDATE SET role = 'user', status = 'approved', subscription_tier = 'premium_weekly', subscription_status = 'active';
     `;
 
     await sql`
-      INSERT INTO users (id, name, email, password_hash, role, status)
-      VALUES ('usr_admin', 'System Admin', 'admin@timecamp.com', ${adminPasswordHash}, 'super_admin', 'approved')
-      ON CONFLICT (id) DO UPDATE SET role = 'super_admin', status = 'approved';
+      INSERT INTO users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
+      VALUES ('usr_admin', 'System Admin', 'admin@timecamp.com', ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
+      ON CONFLICT (id) DO UPDATE SET role = 'super_admin', status = 'approved', subscription_tier = 'premium_weekly', subscription_status = 'active';
     `;
 
     await sql`

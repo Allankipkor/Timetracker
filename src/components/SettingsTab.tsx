@@ -1,18 +1,45 @@
-import React, { useState } from 'react';
-import { Save, ShieldAlert, Key, Mail, CheckCircle } from 'lucide-react';
-import type { PayPalSettings } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Save, ShieldAlert, Key, Mail, CheckCircle, Database } from 'lucide-react';
+import type { PayPalSettings, User, BillingSettings } from '../types';
+import { apiRequest } from '../api';
 
 interface SettingsTabProps {
   settings: PayPalSettings;
   onSaveSettings: (settings: PayPalSettings) => void;
+  currentUser: User | null;
 }
 
-export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettings }) => {
+export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettings, currentUser }) => {
   const [email, setEmail] = useState(settings.email);
   const [clientId, setClientId] = useState(settings.clientId);
   const [mode, setMode] = useState<'sandbox' | 'live'>(settings.mode);
   const [currency, setCurrency] = useState(settings.currency || 'USD');
   const [saved, setSaved] = useState(false);
+
+  // Billing Settings (Admin-only)
+  const [paybillNumber, setPaybillNumber] = useState('');
+  const [tillNumber, setTillNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [usdToKesRate, setUsdToKesRate] = useState(130);
+  const [billingSaved, setBillingSaved] = useState(false);
+  const [billingError, setBillingError] = useState('');
+
+  const isAdmin = currentUser?.role === 'super_admin';
+
+  useEffect(() => {
+    if (isAdmin) {
+      apiRequest<BillingSettings>('/billing/settings')
+        .then(data => {
+          setPaybillNumber(data.paybillNumber || '');
+          setTillNumber(data.tillNumber || '');
+          setBankName(data.bankName || '');
+          setUsdToKesRate(data.usdToKesRate || 130);
+        })
+        .catch(err => {
+          console.error('Failed to load merchant billing settings:', err);
+        });
+    }
+  }, [isAdmin]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +51,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleBillingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBillingError('');
+    try {
+      await apiRequest('/billing/settings', {
+        method: 'POST',
+        body: JSON.stringify({
+          paybillNumber,
+          tillNumber,
+          bankName,
+          usdToKesRate: Number(usdToKesRate)
+        })
+      });
+      setBillingSaved(true);
+      setTimeout(() => setBillingSaved(false), 3000);
+    } catch (err: any) {
+      setBillingError(err.message || 'Failed to update billing settings');
+    }
   };
 
   return (
@@ -137,9 +184,105 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
 
         <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
           <Save size={16} />
-          <span>Save Changes</span>
+          <span>Save PayPal Settings</span>
         </button>
       </form>
+
+      {isAdmin && (
+        <form onSubmit={handleBillingSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '2rem' }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Database size={18} style={{ color: 'var(--accent)' }} />
+            <span>SaaS Billing Settings (M-Pesa / Bank)</span>
+          </h3>
+
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Configure the local payment instructions and rates shown to users when upgrading their subscriptions.
+          </p>
+
+          {billingSaved && (
+            <div style={{
+              backgroundColor: 'var(--success-light)',
+              color: 'var(--success)',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              animation: 'fadeIn 0.2s'
+            }}>
+              <CheckCircle size={16} />
+              <span>Merchant billing settings saved successfully!</span>
+            </div>
+          )}
+
+          {billingError && (
+            <div style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#f87171',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              fontSize: '0.85rem'
+            }}>
+              {billingError}
+            </div>
+          )}
+
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>Business Paybill Number</label>
+              <input
+                type="text"
+                className="form-control"
+                value={paybillNumber}
+                onChange={(e) => setPaybillNumber(e.target.value)}
+                placeholder="e.g. 400222"
+              />
+            </div>
+            <div className="form-group">
+              <label>Buy Goods Till Number</label>
+              <input
+                type="text"
+                className="form-control"
+                value={tillNumber}
+                onChange={(e) => setTillNumber(e.target.value)}
+                placeholder="e.g. 511234"
+              />
+            </div>
+          </div>
+
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>Bank or Payment Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. Lipa na M-Pesa (Paybill)"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>USD to KES Rate</label>
+              <input
+                type="number"
+                step="0.01"
+                className="form-control"
+                value={usdToKesRate}
+                onChange={(e) => setUsdToKesRate(Number(e.target.value))}
+                placeholder="e.g. 130.00"
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
+            <Save size={16} />
+            <span>Save Billing Config</span>
+          </button>
+        </form>
+      )}
     </div>
   );
 };

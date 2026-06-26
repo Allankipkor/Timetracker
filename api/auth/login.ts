@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Query user
     const userResult = await sql`
-      SELECT id, name, email, role, status, created_at FROM users 
+      SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at FROM users 
       WHERE email = ${trimmedEmail} AND password_hash = ${passwordHash}
       LIMIT 1;
     `;
@@ -52,6 +52,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       email: user.email,
       role: user.role,
       status: user.status,
+      subscriptionTier: user.subscription_tier,
+      subscriptionStatus: user.subscription_status,
+      subscriptionExpiresAt: user.subscription_expires_at,
       createdAt: user.created_at
     });
   } catch (error: any) {
