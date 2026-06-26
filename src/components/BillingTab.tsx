@@ -54,14 +54,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
 
       const paystack = new (window as any).PaystackPop();
       const planPrice = getPlanPrice(selectedPlan);
-      // Paystack amount is in cents
-      const amountInCents = Math.round(planPrice * 100);
+      const exchangeRate = billingSettings?.usdToKesRate || 130.00;
+      const amountInKes = planPrice * exchangeRate;
+      const amountInCents = Math.round(amountInKes * 100);
 
       paystack.newTransaction({
         key: billingSettings.paystackPublicKey,
         email: currentUser?.email || 'customer@example.com',
         amount: amountInCents,
-        currency: 'USD',
+        currency: 'KES',
         ref: 'TR-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now(),
         onSuccess: async (transaction: any) => {
           console.log('Paystack payment success:', transaction);
@@ -505,7 +506,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                     }}
                   >
                     <CreditCard size={14} />
-                    <span>Credit/Debit Card</span>
+                    <span>Card / M-Pesa (Instant)</span>
                   </button>
                   <button
                     onClick={() => setActiveCheckoutTab('paybill')}
@@ -526,7 +527,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                     }}
                   >
                     <Wallet size={14} />
-                    <span>Mobile Money / Bank</span>
+                    <span>Manual Paybill / Bank</span>
                   </button>
                 </div>
 
@@ -575,11 +576,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                       </div>
                       
                       <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Secure Credit/Debit Card Checkout
+                        Instant Card & M-Pesa Checkout
                       </span>
                       
                       <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                        You will be redirected to the secure Paystack checkout portal to complete your payment. Paystack supports Visa, Mastercard, and American Express.
+                        You will be redirected to the secure Paystack checkout portal. You can pay instantly using M-Pesa STK Push or Credit/Debit Card (Visa, Mastercard).
                       </p>
                     </div>
 
@@ -595,7 +596,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                           <span>Initializing Gateway...</span>
                         </>
                       ) : (
-                        <span>Pay ${getPlanPrice(selectedPlan).toFixed(2)} with Paystack</span>
+                        <span>Pay with Card / M-Pesa (Instant)</span>
                       )}
                     </button>
                     
