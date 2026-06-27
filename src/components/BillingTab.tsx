@@ -33,7 +33,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setError(null);
     setSuccessMessage(null);
     setTransactionCode('');
-    setActiveCheckoutTab('card');
+    if (billingSettings?.paystackPublicKey) {
+      setActiveCheckoutTab('card');
+    } else {
+      setActiveCheckoutTab('paybill');
+    }
   };
 
   const handlePaystackSubmit = async (e: React.FormEvent) => {
@@ -486,50 +490,52 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             ) : (
               <>
                 {/* Payment Option Tabs */}
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                  <button
-                    onClick={() => setActiveCheckoutTab('card')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      background: 'none',
-                      border: 'none',
-                      borderBottom: activeCheckoutTab === 'card' ? '2px solid var(--accent)' : '2px solid transparent',
-                      color: activeCheckoutTab === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <CreditCard size={14} />
-                    <span>Card / M-Pesa (Instant)</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveCheckoutTab('paybill')}
-                    style={{
-                      flex: 1,
-                      padding: '0.75rem',
-                      background: 'none',
-                      border: 'none',
-                      borderBottom: activeCheckoutTab === 'paybill' ? '2px solid var(--accent)' : '2px solid transparent',
-                      color: activeCheckoutTab === 'paybill' ? 'var(--text-primary)' : 'var(--text-muted)',
-                      fontWeight: 600,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    <Wallet size={14} />
-                    <span>Manual Paybill / Bank</span>
-                  </button>
-                </div>
+                {billingSettings?.paystackPublicKey && (
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
+                    <button
+                      onClick={() => setActiveCheckoutTab('card')}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeCheckoutTab === 'card' ? '2px solid var(--accent)' : '2px solid transparent',
+                        color: activeCheckoutTab === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <CreditCard size={14} />
+                      <span>Card / M-Pesa (Instant)</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveCheckoutTab('paybill')}
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeCheckoutTab === 'paybill' ? '2px solid var(--accent)' : '2px solid transparent',
+                        color: activeCheckoutTab === 'paybill' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: 600,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <Wallet size={14} />
+                      <span>Manual Paybill / Bank</span>
+                    </button>
+                  </div>
+                )}
 
                 {error && (
                   <div style={{
@@ -549,7 +555,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                 )}
 
                 {/* Paystack Checkout panel */}
-                {activeCheckoutTab === 'card' && (
+                {activeCheckoutTab === 'card' && billingSettings?.paystackPublicKey && (
                   <form onSubmit={handlePaystackSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center', padding: '1rem 0' }}>
                     <div style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.02)',
