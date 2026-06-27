@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql } from '../db.js';
+import { sendTelegramNotification } from '../telegram.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration
@@ -150,6 +151,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
         VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'paybill', ${trimmedCode}, 'pending');
       `;
+
+      // Fetch user details for the Telegram notification
+      let userName = 'Unknown User';
+      let userEmail = 'N/A';
+      try {
+        const userRes = await sql`
+          SELECT name, email FROM users WHERE id = ${userId} LIMIT 1;
+        `;
+        if (userRes.rows.length > 0) {
+          userName = userRes.rows[0].name;
+          userEmail = userRes.rows[0].email;
+        }
+      } catch (dbErr) {
+        console.error('Failed to fetch user details for Telegram notification:', dbErr);
+      }
+
+      // Send Telegram alert
+      try {
+        const alertMessage = `💳 <b>New Pending Subscription Payment</b>\n\n<b>User:</b> ${userName} (${userEmail})\n<b>Plan Tier:</b> ${planTier}\n<b>Amount:</b> $${amount.toFixed(2)}\n<b>M-Pesa Reference:</b> ${trimmedCode}\n\n<i>Please log into the Admin Dashboard to verify and approve this payment.</i>`;
+        await sendTelegramNotification(alertMessage);
+      } catch (telegramErr) {
+        console.error('Failed to send payment Telegram alert:', telegramErr);
+      }
 
       return res.status(200).json({
         status: 'pending',

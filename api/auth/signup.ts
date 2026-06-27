@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { sql, hashPassword } from '../db.js';
+import { sendTelegramNotification } from '../telegram.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS configuration
@@ -41,6 +42,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       INSERT INTO users (id, name, email, password_hash, role, status)
       VALUES (${userId}, ${name.trim()}, ${trimmedEmail}, ${passwordHash}, 'user', 'pending');
     `;
+
+    // Send Telegram alert
+    try {
+      const alertMessage = `🔔 <b>New Pending User Registration</b>\n\n<b>Name:</b> ${name.trim()}\n<b>Email:</b> ${trimmedEmail}\n\n<i>Please log into the Admin Dashboard to approve or reject this account.</i>`;
+      await sendTelegramNotification(alertMessage);
+    } catch (telegramErr) {
+      console.error('Failed to send signup Telegram alert:', telegramErr);
+    }
 
     // Create default PayPal settings for the new user
     const defaultPaypalEmail = trimmedEmail;
