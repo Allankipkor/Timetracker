@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.allan.timecamp',
-  appName: 'timecamp',
+  appName: 'TimeTracker',
   webDir: 'dist'
 };
 

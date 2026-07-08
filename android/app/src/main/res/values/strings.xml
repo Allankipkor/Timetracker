@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">timecamp</string>
-    <string name="title_activity_main">timecamp</string>
+    <string name="app_name">TimeTracker</string>
+    <string name="title_activity_main">TimeTracker</string>
     <string name="package_name">com.allan.timecamp</string>
     <string name="custom_url_scheme">com.allan.timecamp</string>
 </resources>
