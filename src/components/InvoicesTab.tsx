@@ -3,6 +3,7 @@ import { Plus, Eye, Check, Send, Trash2, Printer, AlertTriangle, FileText, Mail,
 import type { Project, Invoice, TimeEntry, InvoiceItem, InvoiceStatus, PayPalSettings } from '../types';
 import { PayPalCheckout } from './PayPalCheckout';
 import { getCurrencySymbol } from '../types';
+import { getAppOrigin } from '../api';
 
 interface InvoicesTabProps {
   projects: Project[];
@@ -277,7 +278,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
                                 className="btn btn-outline"
                                 style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
                                 onClick={() => {
-                                  const shareUrl = `${window.location.origin}${window.location.pathname}#/pay/${inv.id}`;
+                                  const shareUrl = `${getAppOrigin()}${window.location.pathname}#/pay/${inv.id}`;
                                   navigator.clipboard.writeText(shareUrl);
                                   alert(`Payment link copied to clipboard:\n${shareUrl}`);
                                 }}
@@ -686,7 +687,7 @@ export const InvoicesTab: React.FC<InvoicesTabProps> = ({
                     className="btn btn-outline"
                     style={{ width: '100%', marginBottom: '1.25rem', fontSize: '0.85rem' }}
                     onClick={() => {
-                      const shareUrl = `${window.location.origin}${window.location.pathname}#/pay/${activeInvoice.id}`;
+                      const shareUrl = `${getAppOrigin()}${window.location.pathname}#/pay/${activeInvoice.id}`;
                       navigator.clipboard.writeText(shareUrl);
                       alert('Payment link copied to clipboard!');
                     }}

@@ -3,6 +3,7 @@ import { CheckCircle2, AlertCircle } from 'lucide-react';
 import type { Invoice, PayPalSettings } from '../types';
 import { getCurrencySymbol } from '../types';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
+import { getAppOrigin } from '../api';
 
 interface ClientPaymentProps {
   invoiceId: string;
@@ -35,7 +36,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
-    fetch(`/api/invoices?id=${invoiceId}`)
+    fetch(`${getAppOrigin()}/api/invoices?id=${invoiceId}`)
       .then(res => {
         if (!res.ok) throw new Error('Invoice not found or database connection failed');
         return res.json();
@@ -62,7 +63,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
 
   const handleCompleteBackendPayment = async () => {
     try {
-      const res = await fetch(`/api/invoices?id=${invoiceId}`, {
+      const res = await fetch(`${getAppOrigin()}/api/invoices?id=${invoiceId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'Paid' })

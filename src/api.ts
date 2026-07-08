@@ -1,9 +1,21 @@
 import type { User } from './types';
 
-// Detect if running inside a Capacitor native app wrapper
-const isNative = typeof window !== 'undefined' && (window as any).Capacitor;
+// Replace this with your custom purchased domain if you have one, e.g., 'https://yourdomain.com'
+export const PRODUCTION_URL = 'https://timecamp-nine.vercel.app';
 
-const API_BASE = isNative ? 'https://timecamp-nine.vercel.app/api' : '/api';
+// Detect if running inside a Capacitor native app wrapper (or locally inside the WebView scheme/portless)
+export const isNative = typeof window !== 'undefined' && 
+  (
+    (window as any).Capacitor || 
+    window.location.protocol === 'capacitor:' || 
+    (window.location.hostname === 'localhost' && window.location.port === '')
+  );
+
+export const getAppOrigin = (): string => {
+  return isNative ? PRODUCTION_URL : window.location.origin;
+};
+
+const API_BASE = isNative ? `${PRODUCTION_URL}/api` : '/api';
 
 export function getUserIdHeader(): Record<string, string> {
   const cached = localStorage.getItem('timecamp_current_user');
