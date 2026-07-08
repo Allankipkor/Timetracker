@@ -1,7 +1,7 @@
 import type { User } from './types';
 
 // Replace this with your custom purchased domain if you have one, e.g., 'https://yourdomain.com'
-export const PRODUCTION_URL = 'https://invoiceaccummulator.com';
+export const PRODUCTION_URL = 'https://invoiceaccumulator.com';
 
 // Detect if running inside a Capacitor native app wrapper (or locally inside the WebView scheme/portless)
 export const isNative = typeof window !== 'undefined' &&
