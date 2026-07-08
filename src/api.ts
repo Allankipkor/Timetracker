@@ -1,6 +1,9 @@
 import type { User } from './types';
 
-const API_BASE = '/api';
+// Detect if running inside a Capacitor native app wrapper
+const isNative = typeof window !== 'undefined' && (window as any).Capacitor;
+
+const API_BASE = isNative ? 'https://timecamp-nine.vercel.app/api' : '/api';
 
 export function getUserIdHeader(): Record<string, string> {
   const cached = localStorage.getItem('timecamp_current_user');
