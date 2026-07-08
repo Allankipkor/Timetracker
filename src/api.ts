@@ -1,13 +1,13 @@
 import type { User } from './types';
 
 // Replace this with your custom purchased domain if you have one, e.g., 'https://yourdomain.com'
-export const PRODUCTION_URL = 'https://timecamp-nine.vercel.app';
+export const PRODUCTION_URL = 'https://invoiceaccummulator.com';
 
 // Detect if running inside a Capacitor native app wrapper (or locally inside the WebView scheme/portless)
-export const isNative = typeof window !== 'undefined' && 
+export const isNative = typeof window !== 'undefined' &&
   (
-    (window as any).Capacitor || 
-    window.location.protocol === 'capacitor:' || 
+    (window as any).Capacitor ||
+    window.location.protocol === 'capacitor:' ||
     (window.location.hostname === 'localhost' && window.location.port === '')
   );
 
@@ -35,7 +35,7 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
-  
+
   // Attach user context headers
   const authHeader = getUserIdHeader();
   if (authHeader['x-user-id']) {
