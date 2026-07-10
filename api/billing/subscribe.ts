@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { planTier, paymentMethod, transactionCode } = req.body;
+    const { planTier, paymentMethod, transactionCode, phoneNumber } = req.body;
 
     if (!planTier || !paymentMethod) {
       return res.status(400).json({ error: 'Missing required parameters: planTier or paymentMethod' });
@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid planTier selection' });
     }
 
-    if (!['card', 'paybill'].includes(paymentMethod)) {
+    if (!['card', 'paybill', 'payhero'].includes(paymentMethod)) {
       return res.status(400).json({ error: 'Invalid paymentMethod' });
     }
 
@@ -178,6 +178,92 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({
         status: 'pending',
         message: 'Your payment reference has been submitted. The administrator will review and approve your subscription shortly.'
+      });
+    }
+
+    // 3. PayHero Automated Checkout: Initiate STK push to user's phone
+    if (paymentMethod === 'payhero') {
+      if (!phoneNumber) {
+        return res.status(400).json({ error: 'Missing M-Pesa phone number for STK Push request.' });
+      }
+
+      // Fetch PayHero settings
+      const settingsResult = await sql`
+        SELECT payhero_api_username, payhero_api_password, payhero_channel_id, usd_to_kes_rate
+        FROM merchant_billing_settings
+        WHERE id = 'primary'
+        LIMIT 1;
+      `;
+      
+      const settings = settingsResult.rows.length > 0 ? settingsResult.rows[0] : null;
+      const username = settings ? settings.payhero_api_username : '';
+      const password = settings ? settings.payhero_api_password : '';
+      const channelId = settings ? settings.payhero_channel_id : '';
+      const rate = settings ? parseFloat(settings.usd_to_kes_rate) : 130.00;
+
+      if (!username || !password || !channelId) {
+        return res.status(400).json({ error: 'PayHero payment gateway is not configured by the administrator.' });
+      }
+
+      // Format phone number to 254XXXXXXXXX
+      let formattedPhone = phoneNumber.replace(/\D/g, '');
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = '254' + formattedPhone.substring(1);
+      } else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+        formattedPhone = '254' + formattedPhone;
+      }
+
+      if (formattedPhone.length !== 12 || !formattedPhone.startsWith('254')) {
+        return res.status(400).json({ error: 'Please enter a valid M-Pesa phone number (e.g. 0712345678).' });
+      }
+
+      // Calculate KES amount
+      const amountInKes = Math.round(amount * rate);
+      const payheroRef = paymentId;
+      const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
+
+      // Determine webhook callback URL
+      const host = req.headers.host || 'invoiceaccumulator.com';
+      const protocol = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+      const callbackUrl = `${protocol}://${host}/api/billing/payhero-callback`;
+
+      console.log(`Initiating PayHero STK Push. Phone: ${formattedPhone}, Amount: ${amountInKes} KES, Callback: ${callbackUrl}`);
+
+      // Call PayHero STK Push API
+      const payheroRes = await fetch('https://backend.payhero.co.ke/api/v2/payments/initiate-stk-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify({
+          amount: amountInKes,
+          phone_number: formattedPhone,
+          channel_id: parseInt(channelId, 10),
+          provider: 'm-pesa',
+          external_reference: payheroRef,
+          callback_url: callbackUrl
+        })
+      });
+
+      if (!payheroRes.ok) {
+        const errText = await payheroRes.text();
+        console.error('PayHero API error response:', errText);
+        return res.status(400).json({ error: `PayHero integration error: ${errText}` });
+      }
+
+      const payheroData: any = await payheroRes.json();
+      console.log('PayHero response:', JSON.stringify(payheroData));
+
+      // Insert pending payhero reference
+      await sql`
+        INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
+        VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'payhero', ${formattedPhone}, 'pending');
+      `;
+
+      return res.status(200).json({
+        status: 'pending',
+        message: 'STK Push request initiated. Please check your phone for the M-Pesa PIN prompt.'
       });
     }
 

@@ -11,13 +11,14 @@ interface BillingTabProps {
 export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUser }) => {
   const [billingSettings, setBillingSettings] = useState<BillingSettings | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'basic_monthly' | 'standard_monthly' | 'premium_weekly' | null>(null);
-  const [activeCheckoutTab, setActiveCheckoutTab] = useState<'card' | 'paybill'>('card');
+  const [activeCheckoutTab, setActiveCheckoutTab] = useState<'card' | 'paybill' | 'payhero'>('card');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Paybill checkout inputs
   const [transactionCode, setTransactionCode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   useEffect(() => {
     // Fetch merchant details (Paybill/Till and exchange rate)
@@ -33,7 +34,10 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setError(null);
     setSuccessMessage(null);
     setTransactionCode('');
-    if (billingSettings?.paystackPublicKey) {
+    setPhoneNumber('');
+    if (billingSettings?.payheroApiUsername) {
+      setActiveCheckoutTab('payhero');
+    } else if (billingSettings?.paystackPublicKey) {
       setActiveCheckoutTab('card');
     } else {
       setActiveCheckoutTab('paybill');
@@ -142,6 +146,63 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     } catch (err: any) {
       setError(err.message || 'An error occurred during submission.');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayheroSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlan) return;
+    if (!phoneNumber || phoneNumber.trim().length < 9) {
+      setError('Please enter a valid M-Pesa phone number.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await apiRequest<{ status: string; message: string }>('/billing/subscribe', {
+        method: 'POST',
+        body: JSON.stringify({
+          planTier: selectedPlan,
+          paymentMethod: 'payhero',
+          phoneNumber: phoneNumber.trim()
+        })
+      });
+
+      if (response.status === 'pending') {
+        setSuccessMessage('STK Push request initiated! Please check your phone for the M-Pesa PIN prompt. Waiting for payment status update...');
+        
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          if (attempts > 20) { // 60 seconds
+            clearInterval(interval);
+            setLoading(false);
+            setSuccessMessage('Payment verification timed out. If you paid, your subscription will activate in a few moments.');
+            return;
+          }
+          try {
+            const updatedUser = await apiRequest<User>('/auth/me');
+            if (updatedUser.subscriptionStatus === 'active') {
+              clearInterval(interval);
+              setLoading(false);
+              onUpdateUser(updatedUser);
+              localStorage.setItem('timecamp_current_user', JSON.stringify(updatedUser));
+              setSuccessMessage('Subscription activated successfully via PayHero! Your plan is now active.');
+            }
+          } catch (err) {
+            console.warn('Error checking user status:', err);
+          }
+        }, 3000);
+      } else {
+        setError(response.message || 'Failed to initiate STK Push.');
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred while initiating STK Push.');
       setLoading(false);
     }
   };
@@ -490,29 +551,54 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             ) : (
               <>
                 {/* Payment Option Tabs */}
-                {billingSettings?.paystackPublicKey && (
+                {(billingSettings?.paystackPublicKey || billingSettings?.payheroApiUsername) && (
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                    <button
-                      onClick={() => setActiveCheckoutTab('card')}
-                      style={{
-                        flex: 1,
-                        padding: '0.75rem',
-                        background: 'none',
-                        border: 'none',
-                        borderBottom: activeCheckoutTab === 'card' ? '2px solid var(--accent)' : '2px solid transparent',
-                        color: activeCheckoutTab === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <CreditCard size={14} />
-                      <span>Card / M-Pesa (Instant)</span>
-                    </button>
+                    {billingSettings?.payheroApiUsername && (
+                      <button
+                        onClick={() => setActiveCheckoutTab('payhero')}
+                        style={{
+                          flex: 1,
+                          padding: '0.75rem',
+                          background: 'none',
+                          border: 'none',
+                          borderBottom: activeCheckoutTab === 'payhero' ? '2px solid var(--accent)' : '2px solid transparent',
+                          color: activeCheckoutTab === 'payhero' ? 'var(--text-primary)' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <Coins size={14} />
+                        <span>M-Pesa STK (Automated)</span>
+                      </button>
+                    )}
+                    {billingSettings?.paystackPublicKey && (
+                      <button
+                        onClick={() => setActiveCheckoutTab('card')}
+                        style={{
+                          flex: 1,
+                          padding: '0.75rem',
+                          background: 'none',
+                          border: 'none',
+                          borderBottom: activeCheckoutTab === 'card' ? '2px solid var(--accent)' : '2px solid transparent',
+                          color: activeCheckoutTab === 'card' ? 'var(--text-primary)' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <CreditCard size={14} />
+                        <span>Card (Paystack)</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => setActiveCheckoutTab('paybill')}
                       style={{
@@ -532,7 +618,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                       }}
                     >
                       <Wallet size={14} />
-                      <span>Manual Paybill / Bank</span>
+                      <span>Manual Paybill</span>
                     </button>
                   </div>
                 )}
@@ -609,6 +695,81 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       🔒 Secured by Paystack (a Stripe Company). Your credentials are never stored.
                     </span>
+                  </form>
+                )}
+
+                {/* PayHero Checkout panel */}
+                {activeCheckoutTab === 'payhero' && billingSettings?.payheroApiUsername && (
+                  <form onSubmit={handlePayheroSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '12px',
+                      padding: '1.5rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.75rem'
+                    }}>
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--success)',
+                        marginBottom: '0.25rem'
+                      }}>
+                        <Coins size={24} />
+                      </div>
+                      
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Instant M-Pesa STK Push
+                      </span>
+                      
+                      <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4, textAlign: 'center' }}>
+                        Enter your M-Pesa phone number below. We will send an instant payment prompt to your phone. Enter your M-Pesa PIN to complete the subscription.
+                      </p>
+
+                      {billingSettings && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)', marginTop: '0.5rem' }}>
+                          <span>
+                            Amount due: <strong>KES {(getPlanPrice(selectedPlan) * billingSettings.usdToKesRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> (Ex. Rate {billingSettings.usdToKesRate.toFixed(2)} KES/USD)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label>M-Pesa Phone Number</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g. 0712345678 or 254712345678"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ padding: '0.85rem', justifyContent: 'center', fontWeight: 600, fontSize: '0.95rem' }}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <RefreshCw size={16} className="animate-spin" />
+                          <span>Waiting for payment...</span>
+                        </>
+                      ) : (
+                        <span>Initiate STK Push Request</span>
+                      )}
+                    </button>
                   </form>
                 )}
 

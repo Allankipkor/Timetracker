@@ -29,8 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         description: row.description,
         projectId: row.project_id,
         taskId: row.task_id || '',
-        startTime: row.start_time.toISOString(),
-        endTime: row.end_time ? row.end_time.toISOString() : null,
+        startTime: new Date(row.start_time).toISOString(),
+        endTime: row.end_time ? new Date(row.end_time).toISOString() : null,
         duration: parseInt(row.duration),
         isBillable: row.is_billable,
         isInvoiceGenerated: row.is_invoice_generated,
@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (incomingIds.length > 0) {
         await sql`
           DELETE FROM time_entries 
-          WHERE user_id = ${userId} AND id <> ALL (${incomingIds});
+          WHERE user_id = ${userId} AND id <> ALL (${incomingIds}::text[]);
         `;
       } else {
         await sql`

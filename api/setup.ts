@@ -23,6 +23,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_public_key VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_live BOOLEAN NOT NULL DEFAULT FALSE;`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS paystack_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_api_username VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_api_password VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_channel_id VARCHAR(50) NOT NULL DEFAULT '';`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -130,7 +133,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         intasend_secret_key VARCHAR(255) NOT NULL DEFAULT '',
         paystack_public_key VARCHAR(255) NOT NULL DEFAULT '',
         paystack_live BOOLEAN NOT NULL DEFAULT FALSE,
-        paystack_secret_key VARCHAR(255) NOT NULL DEFAULT ''
+        paystack_secret_key VARCHAR(255) NOT NULL DEFAULT '',
+        payhero_api_username VARCHAR(255) NOT NULL DEFAULT '',
+        payhero_api_password VARCHAR(255) NOT NULL DEFAULT '',
+        payhero_channel_id VARCHAR(50) NOT NULL DEFAULT ''
       );
     `;
 

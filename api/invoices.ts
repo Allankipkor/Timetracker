@@ -53,8 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         invoiceNumber: invoice.invoice_number,
         clientName: invoice.client_name,
         clientEmail: invoice.client_email,
-        date: invoice.date.toISOString().split('T')[0],
-        dueDate: invoice.due_date.toISOString().split('T')[0],
+        date: new Date(invoice.date).toISOString().split('T')[0],
+        dueDate: new Date(invoice.due_date).toISOString().split('T')[0],
         items: typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items,
         subtotal: parseFloat(invoice.subtotal),
         taxRate: parseFloat(invoice.tax_rate),
@@ -124,8 +124,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         invoiceNumber: row.invoice_number,
         clientName: row.client_name,
         clientEmail: row.client_email,
-        date: row.date.toISOString().split('T')[0],
-        dueDate: row.due_date.toISOString().split('T')[0],
+        date: new Date(row.date).toISOString().split('T')[0],
+        dueDate: new Date(row.due_date).toISOString().split('T')[0],
         items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
         subtotal: parseFloat(row.subtotal),
         taxRate: parseFloat(row.tax_rate),
@@ -199,7 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (incomingIds.length > 0) {
         await sql`
           DELETE FROM invoices 
-          WHERE user_id = ${userId} AND id <> ALL (${incomingIds});
+          WHERE user_id = ${userId} AND id <> ALL (${incomingIds}::text[]);
         `;
       } else {
         await sql`

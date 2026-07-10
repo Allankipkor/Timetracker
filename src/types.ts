@@ -77,6 +77,9 @@ export interface BillingSettings {
   paystackPublicKey?: string;
   paystackSecretKey?: string;
   paystackLive?: boolean;
+  payheroApiUsername?: string;
+  payheroApiPassword?: string;
+  payheroChannelId?: string;
 }
 
 export interface SubscriptionPayment {
