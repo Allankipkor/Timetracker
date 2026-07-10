@@ -73,7 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       INSERT INTO tasks (id, project_id, name)
       VALUES 
         (${taskId1}, ${projectId}, 'Software Development'),
-        (${taskId2}, ${projectId}, 'UI/UX Design');
+        (${taskId2}, ${projectId}, 'UI/UX Design')
+      ON CONFLICT (id) DO NOTHING;
     `;
 
     return res.status(201).json({
