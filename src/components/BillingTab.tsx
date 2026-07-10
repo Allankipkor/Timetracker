@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, CreditCard, Wallet, AlertCircle, Coins, CheckCircle, RefreshCw } from 'lucide-react';
+import { Check, CreditCard, AlertCircle, Coins, CheckCircle, RefreshCw } from 'lucide-react';
 import type { User, BillingSettings } from '../types';
 import { apiRequest } from '../api';
 
@@ -11,13 +11,11 @@ interface BillingTabProps {
 export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUser }) => {
   const [billingSettings, setBillingSettings] = useState<BillingSettings | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'basic_monthly' | 'standard_monthly' | 'premium_weekly' | null>(null);
-  const [activeCheckoutTab, setActiveCheckoutTab] = useState<'card' | 'paybill' | 'payhero'>('card');
+  const [activeCheckoutTab, setActiveCheckoutTab] = useState<'card' | 'payhero'>('card');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Paybill checkout inputs
-  const [transactionCode, setTransactionCode] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
   useEffect(() => {
@@ -33,14 +31,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setSelectedPlan(plan);
     setError(null);
     setSuccessMessage(null);
-    setTransactionCode('');
     setPhoneNumber('');
     if (billingSettings?.payheroApiUsername) {
       setActiveCheckoutTab('payhero');
-    } else if (billingSettings?.paystackPublicKey) {
-      setActiveCheckoutTab('card');
     } else {
-      setActiveCheckoutTab('paybill');
+      setActiveCheckoutTab('card');
     }
   };
 
@@ -116,39 +111,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     }
   };
 
-  const handlePaybillSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlan) return;
 
-    if (!transactionCode || transactionCode.trim().length < 5) {
-      setError('Please enter a valid M-Pesa or Bank transaction reference code.');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await apiRequest<{ status: string; message: string }>('/billing/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({
-          planTier: selectedPlan,
-          paymentMethod: 'paybill',
-          transactionCode: transactionCode.trim()
-        })
-      });
-
-      if (response.status === 'pending') {
-        setSuccessMessage(response.message);
-      } else {
-        setError(response.message || 'Verification submission failed.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during submission.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePayheroSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -551,7 +514,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             ) : (
               <>
                 {/* Payment Option Tabs */}
-                {(billingSettings?.paystackPublicKey || billingSettings?.payheroApiUsername) && (
+                {(billingSettings?.paystackPublicKey && billingSettings?.payheroApiUsername) && (
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
                     {billingSettings?.payheroApiUsername && (
                       <button
@@ -599,27 +562,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                         <span>Card (Paystack)</span>
                       </button>
                     )}
-                    <button
-                      onClick={() => setActiveCheckoutTab('paybill')}
-                      style={{
-                        flex: 1,
-                        padding: '0.75rem',
-                        background: 'none',
-                        border: 'none',
-                        borderBottom: activeCheckoutTab === 'paybill' ? '2px solid var(--accent)' : '2px solid transparent',
-                        color: activeCheckoutTab === 'paybill' ? 'var(--text-primary)' : 'var(--text-muted)',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <Wallet size={14} />
-                      <span>Manual Paybill</span>
-                    </button>
                   </div>
                 )}
 
@@ -773,75 +715,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                   </form>
                 )}
 
-                {/* Paybill reference submission form */}
-                {activeCheckoutTab === 'paybill' && (
-                  <form onSubmit={handlePaybillSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{
-                      backgroundColor: 'rgba(255,255,255,0.02)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      padding: '1rem',
-                      fontSize: '0.825rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.5rem'
-                    }}>
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                        Payment Instructions
-                      </span>
-                      <span>
-                        1. Make direct transfer to the merchant details below:
-                      </span>
-                      <div style={{ margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '0.5rem', borderLeft: '2px solid var(--accent)' }}>
-                        <div><strong>Service:</strong> {billingSettings?.bankName || 'Lipa na M-Pesa (Paybill)'}</div>
-                        {billingSettings?.paybillNumber && <div><strong>Business Paybill:</strong> {billingSettings.paybillNumber}</div>}
-                        {billingSettings?.tillNumber && <div><strong>Buy Goods Till Number:</strong> {billingSettings.tillNumber}</div>}
-                        <div><strong>Account Ref:</strong> TR-{currentUser?.id.substring(0, 8)}</div>
-                      </div>
-                      
-                      {billingSettings && (
-                        <div style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--success)' }}>
-                          <Coins size={14} />
-                          <span>
-                            Amount due: <strong>KES {(getPlanPrice(selectedPlan) * billingSettings.usdToKesRate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> (Ex. Rate {billingSettings.usdToKesRate.toFixed(2)} KES/USD)
-                          </span>
-                        </div>
-                      )}
-                    </div>
 
-                    <div className="form-group">
-                      <label>Enter Payment Transaction Reference Code</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="e.g. RG12345678"
-                        style={{ textTransform: 'uppercase' }}
-                        value={transactionCode}
-                        onChange={(e) => setTransactionCode(e.target.value)}
-                        required
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Paste the reference code received from your transaction statement. The system administrator will verify and approve the upgrade.
-                      </span>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      style={{ marginTop: '1rem', padding: '0.75rem', justifyContent: 'center' }}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <RefreshCw size={16} className="animate-spin" />
-                          <span>Submitting...</span>
-                        </>
-                      ) : (
-                        <span>Submit Payment Code</span>
-                      )}
-                    </button>
-                  </form>
-                )}
               </>
             )}
           </div>
