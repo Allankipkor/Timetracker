@@ -259,6 +259,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         status: 'pending',
+        paymentId: paymentId,
         message: 'STK Push request initiated. Please check your phone for the M-Pesa PIN prompt.'
       });
     }

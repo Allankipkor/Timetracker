@@ -126,7 +126,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setSuccessMessage(null);
 
     try {
-      const response = await apiRequest<{ status: string; message: string }>('/billing/subscribe', {
+      const response = await apiRequest<{ status: string; paymentId: string; message: string }>('/billing/subscribe', {
         method: 'POST',
         body: JSON.stringify({
           planTier: selectedPlan,
@@ -136,6 +136,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
       });
 
       if (response.status === 'pending') {
+        const paymentId = response.paymentId;
         setSuccessMessage('STK Push request initiated! Please check your phone for the M-Pesa PIN prompt. Waiting for payment status update...');
         
         let attempts = 0;
@@ -148,13 +149,18 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             return;
           }
           try {
-            const updatedUser = await apiRequest<User>('/auth/me');
-            if (updatedUser.subscriptionStatus === 'active') {
+            const payStatus = await apiRequest<{ status: string; planTier: string }>(`/billing/status?paymentId=${paymentId}`);
+            if (payStatus.status === 'approved') {
               clearInterval(interval);
+              const updatedUser = await apiRequest<User>('/auth/me');
               setLoading(false);
               onUpdateUser(updatedUser);
               localStorage.setItem('timecamp_current_user', JSON.stringify(updatedUser));
               setSuccessMessage('Subscription activated successfully via PayHero! Your plan is now active.');
+            } else if (payStatus.status === 'failed') {
+              clearInterval(interval);
+              setLoading(false);
+              setError('M-Pesa payment failed or was cancelled.');
             }
           } catch (err) {
             console.warn('Error checking user status:', err);
