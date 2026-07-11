@@ -15,6 +15,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
 
   const [phoneNumber, setPhoneNumber] = useState('');
 
@@ -31,6 +32,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setSelectedPlan(plan);
     setError(null);
     setSuccessMessage(null);
+    setPendingMessage(null);
     setPhoneNumber('');
     if (billingSettings?.payheroEnabled) {
       setActiveCheckoutTab('payhero');
@@ -124,6 +126,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setLoading(true);
     setError(null);
     setSuccessMessage(null);
+    setPendingMessage(null);
 
     try {
       const response = await apiRequest<{ status: string; paymentId: string; message: string }>('/billing/subscribe', {
@@ -137,7 +140,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
 
       if (response.status === 'pending') {
         const paymentId = response.paymentId;
-        setSuccessMessage('STK Push request initiated! Please check your phone for the M-Pesa PIN prompt. Waiting for payment status update...');
+        setPendingMessage('STK Push request initiated! Please check your phone for the M-Pesa PIN prompt. Waiting for payment status update...');
         
         let attempts = 0;
         const interval = setInterval(async () => {
@@ -145,6 +148,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
           if (attempts > 20) { // 60 seconds
             clearInterval(interval);
             setLoading(false);
+            setPendingMessage(null);
             setSuccessMessage('Payment verification timed out. If you paid, your subscription will activate in a few moments.');
             return;
           }
@@ -154,12 +158,14 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
               clearInterval(interval);
               const updatedUser = await apiRequest<User>('/auth/me');
               setLoading(false);
+              setPendingMessage(null);
               onUpdateUser(updatedUser);
               localStorage.setItem('timecamp_current_user', JSON.stringify(updatedUser));
               setSuccessMessage('Subscription activated successfully via PayHero! Your plan is now active.');
             } else if (payStatus.status === 'failed') {
               clearInterval(interval);
               setLoading(false);
+              setPendingMessage(null);
               setError('M-Pesa payment failed or was cancelled.');
             }
           } catch (err) {
@@ -505,17 +511,31 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             {successMessage ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', textAlign: 'center', padding: '1.5rem 0' }}>
                 <CheckCircle size={48} style={{ color: 'var(--success)' }} />
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Payment Processed!</h4>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Payment Approved!</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                   {successMessage}
                 </p>
                 <button
-                  onClick={() => setSelectedPlan(null)}
+                  onClick={() => {
+                    setSelectedPlan(null);
+                    setSuccessMessage(null);
+                  }}
                   className="btn btn-primary"
                   style={{ marginTop: '1rem', padding: '0.5rem 2rem' }}
                 >
                   Close window
                 </button>
+              </div>
+            ) : pendingMessage ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', textAlign: 'center', padding: '1.5rem 0' }}>
+                <RefreshCw size={48} className="animate-spin" style={{ color: 'var(--accent)' }} />
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Complete Transaction</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {pendingMessage}
+                </p>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Please check your M-Pesa phone for a prompt to enter your PIN. Do not close this window.
+                </span>
               </div>
             ) : (
               <>
