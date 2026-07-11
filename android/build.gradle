@@ -22,6 +22,8 @@ allprojects {
         google()
         mavenCentral()
     }
+    // Relocate build directories outside of OneDrive/Desktop to prevent file-locking issues
+    buildDir = "C:/tmp/gradle-builds/timecamp/${project.name}-build"
 }
 
 task clean(type: Delete) {
