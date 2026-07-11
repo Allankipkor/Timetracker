@@ -24,11 +24,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const result = await sql`
-        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate, intasend_public_key, intasend_live, intasend_secret_key, paystack_public_key, paystack_live, paystack_secret_key, payhero_api_username, payhero_api_password, payhero_channel_id
+        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate, intasend_public_key, intasend_live, intasend_secret_key, paystack_public_key, paystack_live, paystack_secret_key
         FROM merchant_billing_settings
         WHERE id = 'primary'
         LIMIT 1;
       `;
+
+      const payheroEnabled = !!(process.env.PAYHERO_API_USERNAME && process.env.PAYHERO_API_PASSWORD && process.env.PAYHERO_CHANNEL_ID);
 
       if (result.rows.length === 0) {
         // Fallback default response if not seeded yet
@@ -43,9 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           paystackPublicKey: '',
           paystackLive: false,
           paystackSecretKey: '',
-          payheroApiUsername: '',
-          payheroChannelId: '',
-          payheroApiPassword: ''
+          payheroEnabled
         });
       }
 
@@ -61,9 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paystackPublicKey: settings.paystack_public_key || '',
         paystackLive: !!settings.paystack_live,
         paystackSecretKey: isAdmin ? (settings.paystack_secret_key || '') : undefined,
-        payheroApiUsername: settings.payhero_api_username || '',
-        payheroChannelId: settings.payhero_channel_id || '',
-        payheroApiPassword: isAdmin ? (settings.payhero_api_password || '') : undefined
+        payheroEnabled
       });
     }
 
@@ -93,10 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         intasendSecretKey,
         paystackPublicKey,
         paystackLive,
-        paystackSecretKey,
-        payheroApiUsername,
-        payheroApiPassword,
-        payheroChannelId
+        paystackSecretKey
       } = req.body;
 
       if (paybillNumber === undefined || tillNumber === undefined || !bankName || !usdToKesRate) {
@@ -107,8 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         INSERT INTO merchant_billing_settings (
           id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
           intasend_public_key, intasend_live, intasend_secret_key,
-          paystack_public_key, paystack_live, paystack_secret_key,
-          payhero_api_username, payhero_api_password, payhero_channel_id
+          paystack_public_key, paystack_live, paystack_secret_key
         )
         VALUES (
           'primary', 
@@ -121,10 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${intasendSecretKey ? intasendSecretKey.trim() : ''},
           ${paystackPublicKey ? paystackPublicKey.trim() : ''}, 
           ${!!paystackLive}, 
-          ${paystackSecretKey ? paystackSecretKey.trim() : ''},
-          ${payheroApiUsername ? payheroApiUsername.trim() : ''},
-          ${payheroApiPassword ? payheroApiPassword.trim() : ''},
-          ${payheroChannelId ? payheroChannelId.trim() : ''}
+          ${paystackSecretKey ? paystackSecretKey.trim() : ''}
         )
         ON CONFLICT (id) DO UPDATE SET
           paybill_number = EXCLUDED.paybill_number,
@@ -136,10 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           intasend_secret_key = EXCLUDED.intasend_secret_key,
           paystack_public_key = EXCLUDED.paystack_public_key,
           paystack_live = EXCLUDED.paystack_live,
-          paystack_secret_key = EXCLUDED.paystack_secret_key,
-          payhero_api_username = EXCLUDED.payhero_api_username,
-          payhero_api_password = EXCLUDED.payhero_api_password,
-          payhero_channel_id = EXCLUDED.payhero_channel_id;
+          paystack_secret_key = EXCLUDED.paystack_secret_key;
       `;
 
       return res.status(200).json({ status: 'success', message: 'Merchant billing configurations updated' });

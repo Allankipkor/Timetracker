@@ -32,7 +32,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setError(null);
     setSuccessMessage(null);
     setPhoneNumber('');
-    if (billingSettings?.payheroApiUsername) {
+    if (billingSettings?.payheroEnabled) {
       setActiveCheckoutTab('payhero');
     } else {
       setActiveCheckoutTab('card');
@@ -514,9 +514,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             ) : (
               <>
                 {/* Payment Option Tabs */}
-                {(billingSettings?.paystackPublicKey && billingSettings?.payheroApiUsername) && (
+                {(billingSettings?.paystackPublicKey || billingSettings?.payheroEnabled) && (
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                    {billingSettings?.payheroApiUsername && (
+                    {billingSettings?.payheroEnabled && (
                       <button
                         onClick={() => setActiveCheckoutTab('payhero')}
                         style={{
@@ -641,7 +641,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                 )}
 
                 {/* PayHero Checkout panel */}
-                {activeCheckoutTab === 'payhero' && billingSettings?.payheroApiUsername && (
+                {activeCheckoutTab === 'payhero' && billingSettings?.payheroEnabled && (
                   <form onSubmit={handlePayheroSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.02)',

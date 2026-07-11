@@ -26,9 +26,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [paystackPublicKey, setPaystackPublicKey] = useState('');
   const [paystackSecretKey, setPaystackSecretKey] = useState('');
   const [paystackLive, setPaystackLive] = useState(false);
-  const [payheroApiUsername, setPayheroApiUsername] = useState('');
-  const [payheroApiPassword, setPayheroApiPassword] = useState('');
-  const [payheroChannelId, setPayheroChannelId] = useState('');
   const [billingSaved, setBillingSaved] = useState(false);
   const [billingError, setBillingError] = useState('');
 
@@ -45,9 +42,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           setPaystackPublicKey(data.paystackPublicKey || '');
           setPaystackSecretKey(data.paystackSecretKey || '');
           setPaystackLive(!!data.paystackLive);
-          setPayheroApiUsername(data.payheroApiUsername || '');
-          setPayheroChannelId(data.payheroChannelId || '');
-          setPayheroApiPassword(data.payheroApiPassword || '');
         })
         .catch(err => {
           console.error('Failed to load merchant billing settings:', err);
@@ -97,10 +91,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           usdToKesRate: Number(usdToKesRate),
           paystackPublicKey,
           paystackSecretKey,
-          paystackLive,
-          payheroApiUsername,
-          payheroApiPassword,
-          payheroChannelId
+          paystackLive
         })
       });
       setBillingSaved(true);
@@ -393,44 +384,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
               <option value="sandbox">Sandbox (Testing / Simulator)</option>
               <option value="live">Live Production (Real Transactions)</option>
             </select>
-          </div>
-
-          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
-            PayHero M-Pesa STK Push Configuration
-          </h4>
-
-          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label>PayHero API Username</label>
-              <input
-                type="text"
-                className="form-control"
-                value={payheroApiUsername}
-                onChange={(e) => setPayheroApiUsername(e.target.value)}
-                placeholder="PayHero API Username"
-              />
-            </div>
-            <div className="form-group">
-              <label>PayHero API Password</label>
-              <input
-                type="password"
-                className="form-control"
-                value={payheroApiPassword}
-                onChange={(e) => setPayheroApiPassword(e.target.value)}
-                placeholder="PayHero API Password"
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>PayHero Channel ID</label>
-            <input
-              type="text"
-              className="form-control"
-              value={payheroChannelId}
-              onChange={(e) => setPayheroChannelId(e.target.value)}
-              placeholder="e.g. 100"
-            />
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>

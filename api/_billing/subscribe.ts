@@ -187,19 +187,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Missing M-Pesa phone number for STK Push request.' });
       }
 
-      // Fetch PayHero settings
+      // Fetch USD to KES rate from settings
       const settingsResult = await sql`
-        SELECT payhero_api_username, payhero_api_password, payhero_channel_id, usd_to_kes_rate
-        FROM merchant_billing_settings
-        WHERE id = 'primary'
-        LIMIT 1;
+        SELECT usd_to_kes_rate FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
       `;
-      
-      const settings = settingsResult.rows.length > 0 ? settingsResult.rows[0] : null;
-      const username = settings ? settings.payhero_api_username : '';
-      const password = settings ? settings.payhero_api_password : '';
-      const channelId = settings ? settings.payhero_channel_id : '';
-      const rate = settings ? parseFloat(settings.usd_to_kes_rate) : 130.00;
+      const rate = settingsResult.rows.length > 0 ? parseFloat(settingsResult.rows[0].usd_to_kes_rate) : 130.00;
+
+      const username = process.env.PAYHERO_API_USERNAME || '';
+      const password = process.env.PAYHERO_API_PASSWORD || '';
+      const channelId = process.env.PAYHERO_CHANNEL_ID || '';
 
       if (!username || !password || !channelId) {
         return res.status(400).json({ error: 'PayHero payment gateway is not configured by the administrator.' });
