@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Check if user already exists
     const existingUser = await sql`
-      SELECT id FROM users WHERE email = ${trimmedEmail} LIMIT 1;
+      SELECT id FROM timetracker_users WHERE email = ${trimmedEmail} LIMIT 1;
     `;
 
     if (existingUser.rows.length > 0) {
@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Insert user with role 'user' and status 'pending'
     await sql`
-      INSERT INTO users (id, name, email, password_hash, role, status)
+      INSERT INTO timetracker_users (id, name, email, password_hash, role, status)
       VALUES (${userId}, ${name.trim()}, ${trimmedEmail}, ${passwordHash}, 'user', 'pending');
     `;
 
@@ -55,14 +55,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const defaultPaypalEmail = trimmedEmail;
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
     await sql`
-      INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
+      INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
       VALUES (${userId}, ${defaultPaypalEmail}, ${defaultClientId}, 'sandbox', 'USD');
     `;
 
     // Create a default project for onboarding
     const projectId = 'proj_' + Math.random().toString(36).substr(2, 9);
     await sql`
-      INSERT INTO projects (id, user_id, name, client_name, color, hourly_rate)
+      INSERT INTO timetracker_projects (id, user_id, name, client_name, color, hourly_rate)
       VALUES (${projectId}, ${userId}, 'Freelance Tasks', 'Sample Client', '#3b82f6', 150.00);
     `;
 
@@ -70,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const taskId1 = 'tsk_' + Math.random().toString(36).substr(2, 9);
     const taskId2 = 'tsk_' + Math.random().toString(36).substr(2, 9);
     await sql`
-      INSERT INTO tasks (id, project_id, name)
+      INSERT INTO timetracker_tasks (id, project_id, name)
       VALUES 
         (${taskId1}, ${projectId}, 'Software Development'),
         (${taskId2}, ${projectId}, 'UI/UX Design')

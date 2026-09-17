@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const invoiceId = id as string;
       
       const invoiceResult = await sql`
-        SELECT * FROM invoices WHERE id = ${invoiceId} LIMIT 1;
+        SELECT * FROM timetracker_invoices WHERE id = ${invoiceId} LIMIT 1;
       `;
 
       if (invoiceResult.rows.length === 0) {
@@ -33,19 +33,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Fetch owner project
       const projectResult = await sql`
-        SELECT * FROM projects WHERE id = ${invoice.project_id} LIMIT 1;
+        SELECT * FROM timetracker_projects WHERE id = ${invoice.project_id} LIMIT 1;
       `;
 
       // Fetch global merchant billing settings for paypal defaults
       const globalRes = await sql`
-        SELECT paypal_client_id, paypal_mode FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+        SELECT paypal_client_id, paypal_mode FROM timetracker_merchant_billing_settings WHERE id = 'primary' LIMIT 1;
       `;
       const globalClientId = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_client_id : 'test';
       const globalMode = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_mode : 'sandbox';
 
       // Fetch owner paypal settings
       const settingsResult = await sql`
-        SELECT * FROM paypal_settings WHERE user_id = ${ownerUserId} LIMIT 1;
+        SELECT * FROM timetracker_paypal_settings WHERE user_id = ${ownerUserId} LIMIT 1;
       `;
 
       const formattedInvoice = {
@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       await sql`
-        UPDATE invoices SET status = ${status} WHERE id = ${invoiceId};
+        UPDATE timetracker_invoices SET status = ${status} WHERE id = ${invoiceId};
       `;
 
       return res.status(200).json({ status: 'success', message: `Invoice status updated to ${status}` });
@@ -116,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const result = await sql`
-        SELECT * FROM invoices WHERE user_id = ${userId} ORDER BY date DESC;
+        SELECT * FROM timetracker_invoices WHERE user_id = ${userId} ORDER BY date DESC;
       `;
 
       const invoices = result.rows.map(row => ({
@@ -150,7 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Check subscription tier daily invoice limits
       const userResult = await sql`
         SELECT subscription_tier, subscription_status, subscription_expires_at 
-        FROM users WHERE id = ${userId} LIMIT 1;
+        FROM timetracker_users WHERE id = ${userId} LIMIT 1;
       `;
       if (userResult.rows.length > 0) {
         const user = userResult.rows[0];
@@ -170,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Get existing invoices to detect new ones
         const existingInvoicesResult = await sql`
-          SELECT id, date FROM invoices WHERE user_id = ${userId};
+          SELECT id, date FROM timetracker_invoices WHERE user_id = ${userId};
         `;
         const existingIds = new Set(existingInvoicesResult.rows.map(r => r.id));
         const todayStr = new Date().toISOString().split('T')[0];
@@ -198,12 +198,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Deletions: Remove invoices not in incoming list
       if (incomingIds.length > 0) {
         await sql`
-          DELETE FROM invoices 
+          DELETE FROM timetracker_invoices 
           WHERE user_id = ${userId} AND id <> ALL (${incomingIds}::text[]);
         `;
       } else {
         await sql`
-          DELETE FROM invoices WHERE user_id = ${userId};
+          DELETE FROM timetracker_invoices WHERE user_id = ${userId};
         `;
       }
 
@@ -214,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const dueDateObj = new Date(inv.dueDate);
 
         await sql`
-          INSERT INTO invoices (
+          INSERT INTO timetracker_invoices (
             id, user_id, invoice_number, client_name, client_email,
             date, due_date, items, subtotal, tax_rate, tax_amount,
             discount, total, status, project_id, currency

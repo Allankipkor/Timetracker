@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Query user
     const userResult = await sql`
-      SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at FROM users 
+      SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at FROM timetracker_users 
       WHERE email = ${trimmedEmail} AND password_hash = ${passwordHash}
       LIMIT 1;
     `;

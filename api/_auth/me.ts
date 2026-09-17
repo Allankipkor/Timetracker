@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await sql`
       SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at
-      FROM users
+      FROM timetracker_users
       WHERE id = ${userId}
       LIMIT 1;
     `;

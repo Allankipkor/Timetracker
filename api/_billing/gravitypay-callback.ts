@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Retrieve pending payment by id or transaction_code or matching reference prefix
     const paymentRes = await sql`
       SELECT id, user_id, plan_tier, amount, status 
-      FROM subscription_payments 
+      FROM timetracker_subscription_payments 
       WHERE id = ${reference} OR transaction_code = ${reference} OR id LIKE ${'%' + reference + '%'}
       LIMIT 1;
     `;
@@ -59,14 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Approve payment
       await sql`
-        UPDATE subscription_payments 
+        UPDATE timetracker_subscription_payments 
         SET status = 'approved', transaction_code = ${actualCode} 
         WHERE id = ${payment.id};
       `;
 
       // Update user subscription
       await sql`
-        UPDATE users 
+        UPDATE timetracker_users 
         SET 
           subscription_tier = ${payment.plan_tier},
           subscription_status = 'active',
@@ -80,7 +80,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let userEmail = 'N/A';
       try {
         const userRes = await sql`
-          SELECT name, email FROM users WHERE id = ${payment.user_id} LIMIT 1;
+          SELECT name, email FROM timetracker_users WHERE id = ${payment.user_id} LIMIT 1;
         `;
         if (userRes.rows.length > 0) {
           userName = userRes.rows[0].name;
@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else {
       // Mark as failed
       await sql`
-        UPDATE subscription_payments 
+        UPDATE timetracker_subscription_payments 
         SET status = 'failed' 
         WHERE id = ${payment.id};
       `;

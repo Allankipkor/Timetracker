@@ -19,14 +19,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Load current global settings
     const globalRes = await sql`
-      SELECT paypal_client_id, paypal_mode FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+      SELECT paypal_client_id, paypal_mode FROM timetracker_merchant_billing_settings WHERE id = 'primary' LIMIT 1;
     `;
     const globalClientId = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_client_id : 'test';
     const globalMode = globalRes.rows.length > 0 ? globalRes.rows[0].paypal_mode : 'sandbox';
 
     if (req.method === 'GET') {
       const result = await sql`
-        SELECT * FROM paypal_settings WHERE user_id = ${userId} LIMIT 1;
+        SELECT * FROM timetracker_paypal_settings WHERE user_id = ${userId} LIMIT 1;
       `;
 
       if (result.rows.length === 0) {
@@ -58,7 +58,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Check if user is admin
       const userRes = await sql`
-        SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+        SELECT role FROM timetracker_users WHERE id = ${userId} LIMIT 1;
       `;
       const isAdmin = userRes.rows.length > 0 && userRes.rows[0].role === 'super_admin';
 
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (isAdmin && clientId && mode) {
         // Update global credentials
         await sql`
-          UPDATE merchant_billing_settings
+          UPDATE timetracker_merchant_billing_settings
           SET paypal_client_id = ${clientId.trim()}, paypal_mode = ${mode.trim()}
           WHERE id = 'primary';
         `;
@@ -78,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Save user specific paypal config
       await sql`
-        INSERT INTO paypal_settings (user_id, email, client_id, mode, currency)
+        INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
         VALUES (${userId}, ${email.trim()}, ${activeClientId}, ${activeMode}, ${currency.trim()})
         ON CONFLICT (user_id) DO UPDATE SET
           email = EXCLUDED.email,

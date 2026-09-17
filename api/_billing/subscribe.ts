@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const settingsResult = await sql`
-        SELECT paystack_secret_key, paystack_live FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+        SELECT paystack_secret_key, paystack_live FROM timetracker_merchant_billing_settings WHERE id = 'primary' LIMIT 1;
       `;
       const secretKey = settingsResult.rows.length > 0 ? settingsResult.rows[0].paystack_secret_key : '';
       
@@ -61,7 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Check for duplicate transaction codes
       const dupCheck = await sql`
-        SELECT id FROM subscription_payments WHERE transaction_code = ${transactionCode} LIMIT 1;
+        SELECT id FROM timetracker_subscription_payments WHERE transaction_code = ${transactionCode} LIMIT 1;
       `;
       if (dupCheck.rows.length > 0) {
         return res.status(409).json({ error: 'This payment transaction reference has already been processed.' });
@@ -93,13 +93,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Insert approved payment log
       await sql`
-        INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
+        INSERT INTO timetracker_subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
         VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'card', ${transactionCode}, 'approved');
       `;
 
       // Update user subscription state
       await sql`
-        UPDATE users 
+        UPDATE timetracker_users 
         SET 
           subscription_tier = ${planTier},
           subscription_status = 'active',
@@ -110,7 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Fetch the updated user profile
       const userRes = await sql`
-        SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at FROM users WHERE id = ${userId} LIMIT 1;
+        SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at FROM timetracker_users WHERE id = ${userId} LIMIT 1;
       `;
       const updatedUser = userRes.rows[0];
 
@@ -140,7 +140,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Check if this transaction code is already registered to avoid duplicates
       const dupCheck = await sql`
-        SELECT id FROM subscription_payments WHERE transaction_code = ${trimmedCode} LIMIT 1;
+        SELECT id FROM timetracker_subscription_payments WHERE transaction_code = ${trimmedCode} LIMIT 1;
       `;
       if (dupCheck.rows.length > 0) {
         return res.status(409).json({ error: 'This payment transaction code has already been submitted' });
@@ -148,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Insert pending paybill reference
       await sql`
-        INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
+        INSERT INTO timetracker_subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
         VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'paybill', ${trimmedCode}, 'pending');
       `;
 
@@ -157,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let userEmail = 'N/A';
       try {
         const userRes = await sql`
-          SELECT name, email FROM users WHERE id = ${userId} LIMIT 1;
+          SELECT name, email FROM timetracker_users WHERE id = ${userId} LIMIT 1;
         `;
         if (userRes.rows.length > 0) {
           userName = userRes.rows[0].name;
@@ -190,7 +190,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Fetch USD to KES rate and gateway settings
       const settingsResult = await sql`
         SELECT usd_to_kes_rate, active_mpesa_gateway, gravitypay_public_key, gravitypay_secret_key, gravitypay_live
-        FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+        FROM timetracker_merchant_billing_settings WHERE id = 'primary' LIMIT 1;
       `;
       const settings = settingsResult.rows.length > 0 ? settingsResult.rows[0] : null;
       const rate = settings ? parseFloat(settings.usd_to_kes_rate) : 130.00;
@@ -316,7 +316,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Insert pending payment log
       await sql`
-        INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
+        INSERT INTO timetracker_subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
         VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, ${executedGateway}, ${formattedPhone}, 'pending');
       `;
 

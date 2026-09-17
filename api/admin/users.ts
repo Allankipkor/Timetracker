@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. Verify that the current user is a super admin
     const callerResult = await sql`
-      SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+      SELECT role FROM timetracker_users WHERE id = ${userId} LIMIT 1;
     `;
 
     if (callerResult.rows.length === 0 || callerResult.rows[0].role !== 'super_admin') {
@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const usersResult = await sql`
         SELECT id, name, email, role, status, created_at AS "createdAt"
-        FROM users 
+        FROM timetracker_users 
         ORDER BY created_at DESC;
       `;
       return res.status(200).json(usersResult.rows);
@@ -54,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Invalid status value' });
         }
         await sql`
-          UPDATE users SET status = ${status} WHERE id = ${targetUserId};
+          UPDATE timetracker_users SET status = ${status} WHERE id = ${targetUserId};
         `;
       }
 
@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Invalid role value' });
         }
         await sql`
-          UPDATE users SET role = ${role} WHERE id = ${targetUserId};
+          UPDATE timetracker_users SET role = ${role} WHERE id = ${targetUserId};
         `;
       }
 

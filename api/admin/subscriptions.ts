@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. Verify caller is a super admin
     const callerCheck = await sql`
-      SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+      SELECT role FROM timetracker_users WHERE id = ${userId} LIMIT 1;
     `;
     if (callerCheck.rows.length === 0 || callerCheck.rows[0].role !== 'super_admin') {
       return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
@@ -34,8 +34,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           p.transaction_code AS "transactionCode", p.status, 
           p.created_at AS "createdAt",
           u.name AS "userName", u.email AS "userEmail"
-        FROM subscription_payments p
-        JOIN users u ON p.user_id = u.id
+        FROM timetracker_subscription_payments p
+        JOIN timetracker_users u ON p.user_id = u.id
         ORDER BY p.created_at DESC;
       `;
       return res.status(200).json(result.rows);
@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Fetch payment details
       const paymentRes = await sql`
-        SELECT user_id, plan_tier, status FROM subscription_payments WHERE id = ${paymentId} LIMIT 1;
+        SELECT user_id, plan_tier, status FROM timetracker_subscription_payments WHERE id = ${paymentId} LIMIT 1;
       `;
       if (paymentRes.rows.length === 0) {
         return res.status(404).json({ error: 'Payment record not found' });
@@ -68,12 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Update payment log status
         await sql`
-          UPDATE subscription_payments SET status = 'approved' WHERE id = ${paymentId};
+          UPDATE timetracker_subscription_payments SET status = 'approved' WHERE id = ${paymentId};
         `;
 
         // Update target user subscription
         await sql`
-          UPDATE users 
+          UPDATE timetracker_users 
           SET 
             subscription_tier = ${payment.plan_tier},
             subscription_status = 'active',
@@ -84,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } else if (action === 'reject') {
         // Update payment log status
         await sql`
-          UPDATE subscription_payments SET status = 'rejected' WHERE id = ${paymentId};
+          UPDATE timetracker_subscription_payments SET status = 'rejected' WHERE id = ${paymentId};
         `;
       }
 

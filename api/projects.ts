@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       // 1. Fetch user projects
       const projectsResult = await sql`
-        SELECT * FROM projects WHERE user_id = ${userId};
+        SELECT * FROM timetracker_projects WHERE user_id = ${userId};
       `;
 
       if (projectsResult.rows.length === 0) {
@@ -34,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // PostgreSQL handles IN queries via ANY($1)
       const tasksResult = await sql`
-        SELECT * FROM tasks WHERE project_id = ANY(${projectIds}::text[]);
+        SELECT * FROM timetracker_tasks WHERE project_id = ANY(${projectIds}::text[]);
       `;
 
       const tasks = tasksResult.rows;
@@ -71,19 +71,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Deletions: Remove database records not in incoming list
       if (incomingIds.length > 0) {
         await sql`
-          DELETE FROM projects 
+          DELETE FROM timetracker_projects 
           WHERE user_id = ${userId} AND id <> ALL (${incomingIds}::text[]);
         `;
       } else {
         await sql`
-          DELETE FROM projects WHERE user_id = ${userId};
+          DELETE FROM timetracker_projects WHERE user_id = ${userId};
         `;
       }
 
       // Upsert projects
       for (const p of projectsList) {
         await sql`
-          INSERT INTO projects (id, user_id, name, client_name, color, hourly_rate)
+          INSERT INTO timetracker_projects (id, user_id, name, client_name, color, hourly_rate)
           VALUES (${p.id}, ${userId}, ${p.name}, ${p.clientName}, ${p.color}, ${p.hourlyRate})
           ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
@@ -98,19 +98,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Deletions for this project's tasks
         if (incomingTaskIds.length > 0) {
           await sql`
-            DELETE FROM tasks 
+            DELETE FROM timetracker_tasks 
             WHERE project_id = ${p.id} AND id <> ALL (${incomingTaskIds}::text[]);
           `;
         } else {
           await sql`
-            DELETE FROM tasks WHERE project_id = ${p.id};
+            DELETE FROM timetracker_tasks WHERE project_id = ${p.id};
           `;
         }
 
         // Insert new/updated tasks
         for (const t of p.tasks) {
           await sql`
-            INSERT INTO tasks (id, project_id, name)
+            INSERT INTO timetracker_tasks (id, project_id, name)
             VALUES (${t.id}, ${p.id}, ${t.name})
             ON CONFLICT (id) DO UPDATE SET
               name = EXCLUDED.name;

@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     if (req.method === 'GET') {
       const result = await sql`
-        SELECT * FROM time_entries 
+        SELECT * FROM timetracker_time_entries 
         WHERE user_id = ${userId}
         ORDER BY start_time DESC;
       `;
@@ -52,12 +52,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Deletions: Remove entries not in incoming list
       if (incomingIds.length > 0) {
         await sql`
-          DELETE FROM time_entries 
+          DELETE FROM timetracker_time_entries 
           WHERE user_id = ${userId} AND id <> ALL (${incomingIds}::text[]);
         `;
       } else {
         await sql`
-          DELETE FROM time_entries WHERE user_id = ${userId};
+          DELETE FROM timetracker_time_entries WHERE user_id = ${userId};
         `;
       }
 
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const startTime = new Date(e.startTime);
 
         await sql`
-          INSERT INTO time_entries (
+          INSERT INTO timetracker_time_entries (
             id, user_id, description, project_id, task_id, 
             start_time, end_time, duration, is_billable, 
             is_invoice_generated, invoice_id

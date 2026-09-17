@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let isAdmin = false;
       if (userId) {
         const adminCheck = await sql`
-          SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+          SELECT role FROM timetracker_users WHERE id = ${userId} LIMIT 1;
         `;
         isAdmin = adminCheck.rows.length > 0 && adminCheck.rows[0].role === 'super_admin';
       }
@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                paystack_public_key, paystack_live, paystack_secret_key,
                gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
                active_mpesa_gateway
-        FROM merchant_billing_settings
+        FROM timetracker_merchant_billing_settings
         WHERE id = 'primary'
         LIMIT 1;
       `;
@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Verify that calling user is a super admin
       const adminCheck = await sql`
-        SELECT role FROM users WHERE id = ${userId} LIMIT 1;
+        SELECT role FROM timetracker_users WHERE id = ${userId} LIMIT 1;
       `;
 
       if (adminCheck.rows.length === 0 || adminCheck.rows[0].role !== 'super_admin') {
@@ -120,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       await sql`
-        INSERT INTO merchant_billing_settings (
+        INSERT INTO timetracker_merchant_billing_settings (
           id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
           intasend_public_key, intasend_live, intasend_secret_key,
           paystack_public_key, paystack_live, paystack_secret_key,
