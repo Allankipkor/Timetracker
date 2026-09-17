@@ -26,6 +26,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [paystackPublicKey, setPaystackPublicKey] = useState('');
   const [paystackSecretKey, setPaystackSecretKey] = useState('');
   const [paystackLive, setPaystackLive] = useState(false);
+  const [gravitypayPublicKey, setGravitypayPublicKey] = useState('');
+  const [gravitypaySecretKey, setGravitypaySecretKey] = useState('');
+  const [gravitypayLive, setGravitypayLive] = useState(true);
+  const [activeMpesaGateway, setActiveMpesaGateway] = useState<'auto' | 'payhero' | 'gravitypay'>('auto');
   const [billingSaved, setBillingSaved] = useState(false);
   const [billingError, setBillingError] = useState('');
 
@@ -42,6 +46,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           setPaystackPublicKey(data.paystackPublicKey || '');
           setPaystackSecretKey(data.paystackSecretKey || '');
           setPaystackLive(!!data.paystackLive);
+          setGravitypayPublicKey(data.gravitypayPublicKey || '');
+          setGravitypaySecretKey(data.gravitypaySecretKey || '');
+          setGravitypayLive(data.gravitypayLive !== false);
+          setActiveMpesaGateway(data.activeMpesaGateway || 'auto');
         })
         .catch(err => {
           console.error('Failed to load merchant billing settings:', err);
@@ -91,7 +99,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           usdToKesRate: Number(usdToKesRate),
           paystackPublicKey,
           paystackSecretKey,
-          paystackLive
+          paystackLive,
+          gravitypayPublicKey,
+          gravitypaySecretKey,
+          gravitypayLive,
+          activeMpesaGateway
         })
       });
       setBillingSaved(true);
@@ -378,15 +390,55 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Gateway Mode</label>
-            <select value={paystackLive ? 'live' : 'sandbox'} onChange={(e) => setPaystackLive(e.target.value === 'live')}>
-              <option value="sandbox">Sandbox (Testing / Simulator)</option>
-              <option value="live">Live Production (Real Transactions)</option>
-            </select>
+          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
+            GravityPay M-Pesa Gateway (Backup / Alternative)
+          </h4>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+            GravityPay (gravitypayapp.com) provides direct M-Pesa STK push rails. Used as an automatic fallback whenever PayHero is unreachable.
+          </p>
+
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>GravityPay Public Key (x-api-key)</label>
+              <input
+                type="text"
+                className="form-control"
+                value={gravitypayPublicKey}
+                onChange={(e) => setGravitypayPublicKey(e.target.value)}
+                placeholder="pk_live_..."
+              />
+            </div>
+            <div className="form-group">
+              <label>GravityPay Secret Key (Bearer Token)</label>
+              <input
+                type="password"
+                className="form-control"
+                value={gravitypaySecretKey}
+                onChange={(e) => setGravitypaySecretKey(e.target.value)}
+                placeholder="sk_live_..."
+              />
+            </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>GravityPay Environment</label>
+              <select value={gravitypayLive ? 'live' : 'sandbox'} onChange={(e) => setGravitypayLive(e.target.value === 'live')}>
+                <option value="live">Live Production (Real STK Push)</option>
+                <option value="sandbox">Sandbox / Staging</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Active M-Pesa Routing Mode</label>
+              <select value={activeMpesaGateway} onChange={(e) => setActiveMpesaGateway(e.target.value as any)}>
+                <option value="auto">⚡ Auto Failover (PayHero → GravityPay)</option>
+                <option value="payhero">PayHero Primary Only</option>
+                <option value="gravitypay">GravityPay Primary Only</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>
             <Save size={16} />
             <span>Save Billing Config</span>
           </button>

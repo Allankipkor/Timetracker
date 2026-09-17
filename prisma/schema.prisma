@@ -101,3 +101,42 @@ model PaypalSettings {
 
   @@map("paypal_settings")
 }
+
+model MerchantBillingSettings {
+  id                  String   @id @default("primary") @db.VarChar(50)
+  paybillNumber       String   @default("") @map("paybill_number") @db.VarChar(50)
+  tillNumber          String   @default("") @map("till_number") @db.VarChar(50)
+  bankName            String   @default("Lipa na M-Pesa (Paybill)") @map("bank_name") @db.VarChar(100)
+  usdToKesRate        Decimal  @default(130.00) @map("usd_to_kes_rate") @db.Decimal(10, 2)
+  paypalClientId      String   @default("test") @map("paypal_client_id") @db.VarChar(255)
+  paypalMode          String   @default("sandbox") @map("paypal_mode") @db.VarChar(20)
+  intasendPublicKey   String   @default("") @map("intasend_public_key") @db.VarChar(255)
+  intasendLive        Boolean  @default(false) @map("intasend_live")
+  intasendSecretKey   String   @default("") @map("intasend_secret_key") @db.VarChar(255)
+  paystackPublicKey   String   @default("") @map("paystack_public_key") @db.VarChar(255)
+  paystackLive        Boolean  @default(false) @map("paystack_live")
+  paystackSecretKey   String   @default("") @map("paystack_secret_key") @db.VarChar(255)
+  payheroApiUsername  String   @default("") @map("payhero_api_username") @db.VarChar(255)
+  payheroApiPassword  String   @default("") @map("payhero_api_password") @db.VarChar(255)
+  payheroChannelId    String   @default("") @map("payhero_channel_id") @db.VarChar(50)
+  gravitypayPublicKey String   @default("") @map("gravitypay_public_key") @db.VarChar(255)
+  gravitypaySecretKey String   @default("") @map("gravitypay_secret_key") @db.VarChar(255)
+  gravitypayLive      Boolean  @default(true) @map("gravitypay_live")
+  activeMpesaGateway  String   @default("auto") @map("active_mpesa_gateway") @db.VarChar(30)
+
+  @@map("merchant_billing_settings")
+}
+
+model SubscriptionPayment {
+  id              String   @id @db.VarChar(50)
+  userId          String   @map("user_id") @db.VarChar(50)
+  planTier        String   @map("plan_tier") @db.VarChar(30)
+  amount          Decimal  @db.Decimal(10, 2)
+  paymentMethod   String   @map("payment_method") @db.VarChar(20)
+  transactionCode String   @map("transaction_code") @db.VarChar(50)
+  status          String   @default("pending") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp()
+
+  @@map("subscription_payments")
+}
+

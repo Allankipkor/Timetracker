@@ -34,7 +34,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setSuccessMessage(null);
     setPendingMessage(null);
     setPhoneNumber('');
-    if (billingSettings?.payheroEnabled) {
+    if (billingSettings?.payheroEnabled || billingSettings?.gravitypayEnabled) {
       setActiveCheckoutTab('payhero');
     } else {
       setActiveCheckoutTab('card');
@@ -540,9 +540,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             ) : (
               <>
                 {/* Payment Option Tabs */}
-                {(billingSettings?.paystackPublicKey || billingSettings?.payheroEnabled) && (
+                {(billingSettings?.paystackPublicKey || billingSettings?.payheroEnabled || billingSettings?.gravitypayEnabled) && (
                   <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                    {billingSettings?.payheroEnabled && (
+                    {(billingSettings?.payheroEnabled || billingSettings?.gravitypayEnabled) && (
                       <button
                         onClick={() => setActiveCheckoutTab('payhero')}
                         style={{
@@ -666,8 +666,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                   </form>
                 )}
 
-                {/* PayHero Checkout panel */}
-                {activeCheckoutTab === 'payhero' && billingSettings?.payheroEnabled && (
+                {/* Automated M-Pesa STK Checkout panel (PayHero / GravityPay) */}
+                {activeCheckoutTab === 'payhero' && (billingSettings?.payheroEnabled || billingSettings?.gravitypayEnabled) && (
                   <form onSubmit={handlePayheroSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{
                       backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -693,9 +693,24 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                         <Coins size={24} />
                       </div>
                       
-                      <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Instant M-Pesa STK Push
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          Instant M-Pesa STK Push
+                        </span>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          color: '#60a5fa',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '12px',
+                          fontWeight: 600,
+                          border: '1px solid rgba(59, 130, 246, 0.3)'
+                        }}>
+                          {billingSettings?.activeMpesaGateway === 'gravitypay' ? 'GravityPay Rails' :
+                           billingSettings?.activeMpesaGateway === 'payhero' ? 'PayHero Rails' :
+                           '⚡ Auto Failover Rails'}
+                        </span>
+                      </div>
                       
                       <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4, textAlign: 'center' }}>
                         Enter your M-Pesa phone number below. We will send an instant payment prompt to your phone. Enter your M-Pesa PIN to complete the subscription.

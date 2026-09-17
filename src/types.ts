@@ -78,6 +78,11 @@ export interface BillingSettings {
   paystackSecretKey?: string;
   paystackLive?: boolean;
   payheroEnabled?: boolean;
+  gravitypayPublicKey?: string;
+  gravitypaySecretKey?: string;
+  gravitypayLive?: boolean;
+  gravitypayEnabled?: boolean;
+  activeMpesaGateway?: 'auto' | 'payhero' | 'gravitypay';
 }
 
 export interface SubscriptionPayment {

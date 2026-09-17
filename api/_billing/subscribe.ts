@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid planTier selection' });
     }
 
-    if (!['card', 'paybill', 'payhero'].includes(paymentMethod)) {
+    if (!['card', 'paybill', 'payhero', 'gravitypay', 'mpesa'].includes(paymentMethod)) {
       return res.status(400).json({ error: 'Invalid paymentMethod' });
     }
 
@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const paymentId = 'pay_' + Math.random().toString(36).substr(2, 9);
 
-    // 1. Card Checkout: Instant Simulation approval
+    // 1. Card Checkout: Paystack verification
     if (paymentMethod === 'card') {
       if (!transactionCode) {
         return res.status(400).json({ error: 'Missing transaction code reference.' });
@@ -181,25 +181,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 3. PayHero Automated Checkout: Initiate STK push to user's phone
-    if (paymentMethod === 'payhero') {
+    // 3. Automated M-Pesa STK Push (PayHero / GravityPay with Auto-Failover)
+    if (paymentMethod === 'payhero' || paymentMethod === 'gravitypay' || paymentMethod === 'mpesa') {
       if (!phoneNumber) {
         return res.status(400).json({ error: 'Missing M-Pesa phone number for STK Push request.' });
       }
 
-      // Fetch USD to KES rate from settings
+      // Fetch USD to KES rate and gateway settings
       const settingsResult = await sql`
-        SELECT usd_to_kes_rate FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+        SELECT usd_to_kes_rate, active_mpesa_gateway, gravitypay_public_key, gravitypay_secret_key, gravitypay_live
+        FROM merchant_billing_settings WHERE id = 'primary' LIMIT 1;
       `;
-      const rate = settingsResult.rows.length > 0 ? parseFloat(settingsResult.rows[0].usd_to_kes_rate) : 130.00;
+      const settings = settingsResult.rows.length > 0 ? settingsResult.rows[0] : null;
+      const rate = settings ? parseFloat(settings.usd_to_kes_rate) : 130.00;
+      const configuredActiveGateway = (settings?.active_mpesa_gateway || 'auto').toLowerCase();
 
-      const username = process.env.PAYHERO_API_USERNAME || '';
-      const password = process.env.PAYHERO_API_PASSWORD || '';
-      const channelId = process.env.PAYHERO_CHANNEL_ID || '';
-
-      if (!username || !password || !channelId) {
-        return res.status(400).json({ error: 'PayHero payment gateway is not configured by the administrator.' });
-      }
+      // Determine requested gateway routing
+      let targetGateway = configuredActiveGateway;
+      if (paymentMethod === 'gravitypay') targetGateway = 'gravitypay';
+      else if (paymentMethod === 'payhero') targetGateway = 'payhero';
 
       // Format phone number to 254XXXXXXXXX
       let formattedPhone = phoneNumber.replace(/\D/g, '');
@@ -215,52 +215,163 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Calculate KES amount
       const amountInKes = Math.round(amount * rate);
-      const payheroRef = paymentId;
-      const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
-
-      // Determine webhook callback URL
       const host = req.headers.host || 'invoiceaccumulator.com';
       const protocol = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
-      const callbackUrl = `${protocol}://${host}/api/billing/payhero-callback`;
 
-      console.log(`Initiating PayHero STK Push. Phone: ${formattedPhone}, Amount: ${amountInKes} KES, Callback: ${callbackUrl}`);
+      // Credentials for gateways
+      const payheroUsername = process.env.PAYHERO_API_USERNAME || '';
+      const payheroPassword = process.env.PAYHERO_API_PASSWORD || '';
+      const payheroChannelId = process.env.PAYHERO_CHANNEL_ID || '';
+      const payheroConfigured = !!(payheroUsername && payheroPassword && payheroChannelId);
 
-      // Call PayHero STK Push API
-      const payheroRes = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authHeader
-        },
-        body: JSON.stringify({
-          amount: amountInKes,
-          phone_number: formattedPhone,
-          channel_id: parseInt(channelId, 10),
-          provider: 'm-pesa',
-          external_reference: payheroRef,
-          callback_url: callbackUrl
-        })
-      });
+      const gpPublicKey = settings?.gravitypay_public_key || process.env.GRAVITYPAY_PUBLIC_KEY || '';
+      const gpSecretKey = settings?.gravitypay_secret_key || process.env.GRAVITYPAY_SECRET_KEY || '';
+      const gravitypayConfigured = !!(gpPublicKey && gpSecretKey);
 
-      if (!payheroRes.ok) {
-        const errText = await payheroRes.text();
-        console.error('PayHero API error response:', errText);
-        return res.status(400).json({ error: `PayHero integration error: ${errText}` });
+      // Helper to trigger PayHero STK Push
+      const tryPayHero = async () => {
+        if (!payheroConfigured) {
+          throw new Error('PayHero payment gateway credentials are not configured.');
+        }
+
+        const payheroRef = paymentId;
+        const authHeader = 'Basic ' + Buffer.from(`${payheroUsername}:${payheroPassword}`).toString('base64');
+        const callbackUrl = `${protocol}://${host}/api/billing/payhero-callback`;
+
+        console.log(`Initiating PayHero STK Push. Phone: ${formattedPhone}, Amount: ${amountInKes} KES, Callback: ${callbackUrl}`);
+
+        const payheroRes = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader
+          },
+          body: JSON.stringify({
+            amount: amountInKes,
+            phone_number: formattedPhone,
+            channel_id: parseInt(payheroChannelId, 10),
+            provider: 'm-pesa',
+            external_reference: payheroRef,
+            callback_url: callbackUrl
+          })
+        });
+
+        if (!payheroRes.ok) {
+          const errText = await payheroRes.text();
+          throw new Error(`PayHero API error (${payheroRes.status}): ${errText}`);
+        }
+
+        return await payheroRes.json();
+      };
+
+      // Helper to trigger GravityPay STK Push
+      const tryGravityPay = async () => {
+        if (!gravitypayConfigured) {
+          throw new Error('GravityPay gateway credentials are not configured.');
+        }
+
+        // GravityPay reference must be between 1 and 12 characters
+        const gpRef = (paymentId.replace('pay_', 'GP')).substring(0, 12);
+        console.log(`Initiating GravityPay STK Push. Phone: ${formattedPhone}, Amount: ${amountInKes} KES, Ref: ${gpRef}`);
+
+        const gpRes = await fetch('https://api.gravitypayapp.com/api/v1/stk/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${gpSecretKey}`,
+            'x-api-key': gpPublicKey
+          },
+          body: JSON.stringify({
+            phoneNumber: formattedPhone,
+            amount: amountInKes,
+            reference: gpRef,
+            description: `TimeCamp ${planTier}`
+          })
+        });
+
+        if (!gpRes.ok) {
+          const errText = await gpRes.text();
+          throw new Error(`GravityPay API error (${gpRes.status}): ${errText}`);
+        }
+
+        return await gpRes.json();
+      };
+
+      let executedGateway = 'payhero';
+      let success = false;
+      let lastError: any = null;
+
+      if (targetGateway === 'gravitypay') {
+        try {
+          await tryGravityPay();
+          executedGateway = 'gravitypay';
+          success = true;
+        } catch (err: any) {
+          console.error('GravityPay execution failed:', err);
+          lastError = err;
+        }
+      } else if (targetGateway === 'payhero') {
+        try {
+          await tryPayHero();
+          executedGateway = 'payhero';
+          success = true;
+        } catch (err: any) {
+          console.error('PayHero execution failed:', err);
+          lastError = err;
+        }
+      } else {
+        // Auto-failover: Try PayHero first, then seamlessly fallback to GravityPay
+        if (payheroConfigured) {
+          try {
+            await tryPayHero();
+            executedGateway = 'payhero';
+            success = true;
+          } catch (payheroErr: any) {
+            console.warn('PayHero failed, triggering automatic failover to GravityPay:', payheroErr.message);
+            if (gravitypayConfigured) {
+              try {
+                await tryGravityPay();
+                executedGateway = 'gravitypay';
+                success = true;
+              } catch (gpErr: any) {
+                console.error('GravityPay failover also failed:', gpErr);
+                lastError = gpErr;
+              }
+            } else {
+              lastError = payheroErr;
+            }
+          }
+        } else if (gravitypayConfigured) {
+          try {
+            await tryGravityPay();
+            executedGateway = 'gravitypay';
+            success = true;
+          } catch (gpErr: any) {
+            console.error('GravityPay execution failed:', gpErr);
+            lastError = gpErr;
+          }
+        } else {
+          lastError = new Error('No automated M-Pesa gateway (PayHero or GravityPay) is configured.');
+        }
       }
 
-      const payheroData: any = await payheroRes.json();
-      console.log('PayHero response:', JSON.stringify(payheroData));
+      if (!success) {
+        return res.status(400).json({
+          error: lastError?.message || 'Failed to initiate STK Push. Please try again or use manual Paybill.'
+        });
+      }
 
-      // Insert pending payhero reference
+      // Insert pending payment log
       await sql`
         INSERT INTO subscription_payments (id, user_id, plan_tier, amount, payment_method, transaction_code, status)
-        VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, 'payhero', ${formattedPhone}, 'pending');
+        VALUES (${paymentId}, ${userId}, ${planTier}, ${amount}, ${executedGateway}, ${formattedPhone}, 'pending');
       `;
 
       return res.status(200).json({
         status: 'pending',
         paymentId: paymentId,
-        message: 'STK Push request initiated. Please check your phone for the M-Pesa PIN prompt.'
+        gateway: executedGateway,
+        message: `STK Push prompt sent via ${executedGateway === 'gravitypay' ? 'GravityPay' : 'PayHero'}. Please enter your M-Pesa PIN on your phone.`
       });
     }
 

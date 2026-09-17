@@ -26,6 +26,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_api_username VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_api_password VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS payhero_channel_id VARCHAR(50) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_public_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE;`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'auto';`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -136,7 +140,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paystack_secret_key VARCHAR(255) NOT NULL DEFAULT '',
         payhero_api_username VARCHAR(255) NOT NULL DEFAULT '',
         payhero_api_password VARCHAR(255) NOT NULL DEFAULT '',
-        payhero_channel_id VARCHAR(50) NOT NULL DEFAULT ''
+        payhero_channel_id VARCHAR(50) NOT NULL DEFAULT '',
+        gravitypay_public_key VARCHAR(255) NOT NULL DEFAULT '',
+        gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '',
+        gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE,
+        active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'auto'
       );
     `;
 
@@ -160,13 +168,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
         paypal_client_id, paypal_mode, 
         intasend_public_key, intasend_live, intasend_secret_key,
-        paystack_public_key, paystack_live, paystack_secret_key
+        paystack_public_key, paystack_live, paystack_secret_key,
+        gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
+        active_mpesa_gateway
       )
       VALUES (
         'primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00, 
         'test', 'sandbox', 
         '', false, '',
-        '', false, ''
+        '', false, '',
+        '', '', true,
+        'auto'
       )
       ON CONFLICT (id) DO NOTHING;
     `;

@@ -24,7 +24,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const result = await sql`
-        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate, intasend_public_key, intasend_live, intasend_secret_key, paystack_public_key, paystack_live, paystack_secret_key
+        SELECT paybill_number, till_number, bank_name, usd_to_kes_rate, 
+               intasend_public_key, intasend_live, intasend_secret_key, 
+               paystack_public_key, paystack_live, paystack_secret_key,
+               gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
+               active_mpesa_gateway
         FROM merchant_billing_settings
         WHERE id = 'primary'
         LIMIT 1;
@@ -45,11 +49,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           paystackPublicKey: '',
           paystackLive: false,
           paystackSecretKey: '',
-          payheroEnabled
+          payheroEnabled,
+          gravitypayPublicKey: '',
+          gravitypayLive: true,
+          gravitypayEnabled: false,
+          activeMpesaGateway: 'auto'
         });
       }
 
       const settings = result.rows[0];
+      const gravitypayPublicKey = settings.gravitypay_public_key || process.env.GRAVITYPAY_PUBLIC_KEY || '';
+      const gravitypaySecretKey = settings.gravitypay_secret_key || process.env.GRAVITYPAY_SECRET_KEY || '';
+      const gravitypayEnabled = !!(gravitypayPublicKey && gravitypaySecretKey);
+
       return res.status(200).json({
         paybillNumber: settings.paybill_number,
         tillNumber: settings.till_number,
@@ -61,7 +73,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         paystackPublicKey: settings.paystack_public_key || '',
         paystackLive: !!settings.paystack_live,
         paystackSecretKey: isAdmin ? (settings.paystack_secret_key || '') : undefined,
-        payheroEnabled
+        payheroEnabled,
+        gravitypayPublicKey,
+        gravitypayLive: settings.gravitypay_live !== false,
+        gravitypaySecretKey: isAdmin ? gravitypaySecretKey : undefined,
+        gravitypayEnabled,
+        activeMpesaGateway: settings.active_mpesa_gateway || 'auto'
       });
     }
 
@@ -91,7 +108,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         intasendSecretKey,
         paystackPublicKey,
         paystackLive,
-        paystackSecretKey
+        paystackSecretKey,
+        gravitypayPublicKey,
+        gravitypaySecretKey,
+        gravitypayLive,
+        activeMpesaGateway
       } = req.body;
 
       if (paybillNumber === undefined || tillNumber === undefined || !bankName || !usdToKesRate) {
@@ -102,7 +123,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         INSERT INTO merchant_billing_settings (
           id, paybill_number, till_number, bank_name, usd_to_kes_rate, 
           intasend_public_key, intasend_live, intasend_secret_key,
-          paystack_public_key, paystack_live, paystack_secret_key
+          paystack_public_key, paystack_live, paystack_secret_key,
+          gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
+          active_mpesa_gateway
         )
         VALUES (
           'primary', 
@@ -115,7 +138,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${intasendSecretKey ? intasendSecretKey.trim() : ''},
           ${paystackPublicKey ? paystackPublicKey.trim() : ''}, 
           ${!!paystackLive}, 
-          ${paystackSecretKey ? paystackSecretKey.trim() : ''}
+          ${paystackSecretKey ? paystackSecretKey.trim() : ''},
+          ${gravitypayPublicKey ? gravitypayPublicKey.trim() : ''},
+          ${gravitypaySecretKey ? gravitypaySecretKey.trim() : ''},
+          ${gravitypayLive !== false},
+          ${activeMpesaGateway ? activeMpesaGateway.trim() : 'auto'}
         )
         ON CONFLICT (id) DO UPDATE SET
           paybill_number = EXCLUDED.paybill_number,
@@ -127,7 +154,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           intasend_secret_key = EXCLUDED.intasend_secret_key,
           paystack_public_key = EXCLUDED.paystack_public_key,
           paystack_live = EXCLUDED.paystack_live,
-          paystack_secret_key = EXCLUDED.paystack_secret_key;
+          paystack_secret_key = EXCLUDED.paystack_secret_key,
+          gravitypay_public_key = EXCLUDED.gravitypay_public_key,
+          gravitypay_secret_key = EXCLUDED.gravitypay_secret_key,
+          gravitypay_live = EXCLUDED.gravitypay_live,
+          active_mpesa_gateway = EXCLUDED.active_mpesa_gateway;
       `;
 
       return res.status(200).json({ status: 'success', message: 'Merchant billing configurations updated' });
