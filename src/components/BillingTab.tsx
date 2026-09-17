@@ -706,9 +706,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
                           fontWeight: 600,
                           border: '1px solid rgba(59, 130, 246, 0.3)'
                         }}>
-                          {billingSettings?.activeMpesaGateway === 'gravitypay' ? 'GravityPay Rails' :
-                           billingSettings?.activeMpesaGateway === 'payhero' ? 'PayHero Rails' :
-                           '⚡ Auto Failover Rails'}
+                          {billingSettings?.activeMpesaGateway === 'gravitypay' ? 'GravityPay Rails' : 'PayHero Rails'}
                         </span>
                       </div>
                       

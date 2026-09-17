@@ -53,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           gravitypayPublicKey: '',
           gravitypayLive: true,
           gravitypayEnabled: false,
-          activeMpesaGateway: 'auto'
+          activeMpesaGateway: 'payhero'
         });
       }
 
@@ -78,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gravitypayLive: settings.gravitypay_live !== false,
         gravitypaySecretKey: isAdmin ? gravitypaySecretKey : undefined,
         gravitypayEnabled,
-        activeMpesaGateway: settings.active_mpesa_gateway || 'auto'
+        activeMpesaGateway: settings.active_mpesa_gateway === 'gravitypay' ? 'gravitypay' : 'payhero'
       });
     }
 
@@ -142,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${gravitypayPublicKey ? gravitypayPublicKey.trim() : ''},
           ${gravitypaySecretKey ? gravitypaySecretKey.trim() : ''},
           ${gravitypayLive !== false},
-          ${activeMpesaGateway ? activeMpesaGateway.trim() : 'auto'}
+          ${activeMpesaGateway === 'gravitypay' ? 'gravitypay' : 'payhero'}
         )
         ON CONFLICT (id) DO UPDATE SET
           paybill_number = EXCLUDED.paybill_number,

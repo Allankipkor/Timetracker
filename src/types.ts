@@ -82,7 +82,7 @@ export interface BillingSettings {
   gravitypaySecretKey?: string;
   gravitypayLive?: boolean;
   gravitypayEnabled?: boolean;
-  activeMpesaGateway?: 'auto' | 'payhero' | 'gravitypay';
+  activeMpesaGateway?: 'payhero' | 'gravitypay';
 }
 
 export interface SubscriptionPayment {

@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_public_key VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE;`;
-      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'auto';`;
+      await sql`ALTER TABLE merchant_billing_settings ADD COLUMN IF NOT EXISTS active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'payhero';`;
     } catch (migErr) {
       console.warn('Migration warnings (columns might already exist):', migErr);
     }
@@ -144,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gravitypay_public_key VARCHAR(255) NOT NULL DEFAULT '',
         gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '',
         gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE,
-        active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'auto'
+        active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'payhero'
       );
     `;
 
@@ -178,7 +178,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         '', false, '',
         '', false, '',
         '', '', true,
-        'auto'
+        'payhero'
       )
       ON CONFLICT (id) DO NOTHING;
     `;

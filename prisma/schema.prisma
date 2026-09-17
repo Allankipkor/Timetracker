@@ -122,7 +122,7 @@ model MerchantBillingSettings {
   gravitypayPublicKey String   @default("") @map("gravitypay_public_key") @db.VarChar(255)
   gravitypaySecretKey String   @default("") @map("gravitypay_secret_key") @db.VarChar(255)
   gravitypayLive      Boolean  @default(true) @map("gravitypay_live")
-  activeMpesaGateway  String   @default("auto") @map("active_mpesa_gateway") @db.VarChar(30)
+  activeMpesaGateway  String   @default("payhero") @map("active_mpesa_gateway") @db.VarChar(30)
 
   @@map("merchant_billing_settings")
 }

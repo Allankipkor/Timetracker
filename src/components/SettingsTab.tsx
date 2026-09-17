@@ -29,7 +29,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [gravitypayPublicKey, setGravitypayPublicKey] = useState('');
   const [gravitypaySecretKey, setGravitypaySecretKey] = useState('');
   const [gravitypayLive, setGravitypayLive] = useState(true);
-  const [activeMpesaGateway, setActiveMpesaGateway] = useState<'auto' | 'payhero' | 'gravitypay'>('auto');
+  const [activeMpesaGateway, setActiveMpesaGateway] = useState<'payhero' | 'gravitypay'>('payhero');
   const [billingSaved, setBillingSaved] = useState(false);
   const [billingError, setBillingError] = useState('');
 
@@ -49,7 +49,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           setGravitypayPublicKey(data.gravitypayPublicKey || '');
           setGravitypaySecretKey(data.gravitypaySecretKey || '');
           setGravitypayLive(data.gravitypayLive !== false);
-          setActiveMpesaGateway(data.activeMpesaGateway || 'auto');
+          setActiveMpesaGateway(data.activeMpesaGateway === 'gravitypay' ? 'gravitypay' : 'payhero');
         })
         .catch(err => {
           console.error('Failed to load merchant billing settings:', err);
@@ -391,10 +391,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           </div>
 
           <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
-            GravityPay M-Pesa Gateway (Backup / Alternative)
+            GravityPay M-Pesa Gateway (Alternative Gateway)
           </h4>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-            GravityPay (gravitypayapp.com) provides direct M-Pesa STK push rails. Used as an automatic fallback whenever PayHero is unreachable.
+            GravityPay (gravitypayapp.com) provides direct M-Pesa STK push rails. You can switch between PayHero and GravityPay using the manual selector below.
           </p>
 
           <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -429,11 +429,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
               </select>
             </div>
             <div className="form-group">
-              <label>Active M-Pesa Routing Mode</label>
-              <select value={activeMpesaGateway} onChange={(e) => setActiveMpesaGateway(e.target.value as any)}>
-                <option value="auto">⚡ Auto Failover (PayHero → GravityPay)</option>
-                <option value="payhero">PayHero Primary Only</option>
-                <option value="gravitypay">GravityPay Primary Only</option>
+              <label>Active M-Pesa Gateway</label>
+              <select value={activeMpesaGateway} onChange={(e) => setActiveMpesaGateway(e.target.value as 'payhero' | 'gravitypay')}>
+                <option value="payhero">PayHero</option>
+                <option value="gravitypay">GravityPay</option>
               </select>
             </div>
           </div>

@@ -194,7 +194,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
       const settings = settingsResult.rows.length > 0 ? settingsResult.rows[0] : null;
       const rate = settings ? parseFloat(settings.usd_to_kes_rate) : 130.00;
-      const configuredActiveGateway = (settings?.active_mpesa_gateway || 'auto').toLowerCase();
+      const configuredActiveGateway = (settings?.active_mpesa_gateway === 'gravitypay') ? 'gravitypay' : 'payhero';
 
       // Determine requested gateway routing
       let targetGateway = configuredActiveGateway;
@@ -297,67 +297,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await gpRes.json();
       };
 
-      let executedGateway = 'payhero';
-      let success = false;
-      let lastError: any = null;
+      let executedGateway: 'payhero' | 'gravitypay' = targetGateway === 'gravitypay' ? 'gravitypay' : 'payhero';
 
-      if (targetGateway === 'gravitypay') {
-        try {
+      try {
+        if (targetGateway === 'gravitypay') {
           await tryGravityPay();
           executedGateway = 'gravitypay';
-          success = true;
-        } catch (err: any) {
-          console.error('GravityPay execution failed:', err);
-          lastError = err;
-        }
-      } else if (targetGateway === 'payhero') {
-        try {
+        } else {
           await tryPayHero();
           executedGateway = 'payhero';
-          success = true;
-        } catch (err: any) {
-          console.error('PayHero execution failed:', err);
-          lastError = err;
         }
-      } else {
-        // Auto-failover: Try PayHero first, then seamlessly fallback to GravityPay
-        if (payheroConfigured) {
-          try {
-            await tryPayHero();
-            executedGateway = 'payhero';
-            success = true;
-          } catch (payheroErr: any) {
-            console.warn('PayHero failed, triggering automatic failover to GravityPay:', payheroErr.message);
-            if (gravitypayConfigured) {
-              try {
-                await tryGravityPay();
-                executedGateway = 'gravitypay';
-                success = true;
-              } catch (gpErr: any) {
-                console.error('GravityPay failover also failed:', gpErr);
-                lastError = gpErr;
-              }
-            } else {
-              lastError = payheroErr;
-            }
-          }
-        } else if (gravitypayConfigured) {
-          try {
-            await tryGravityPay();
-            executedGateway = 'gravitypay';
-            success = true;
-          } catch (gpErr: any) {
-            console.error('GravityPay execution failed:', gpErr);
-            lastError = gpErr;
-          }
-        } else {
-          lastError = new Error('No automated M-Pesa gateway (PayHero or GravityPay) is configured.');
-        }
-      }
-
-      if (!success) {
+      } catch (err: any) {
+        console.error(`${executedGateway} STK Push failed:`, err);
         return res.status(400).json({
-          error: lastError?.message || 'Failed to initiate STK Push. Please try again or use manual Paybill.'
+          error: err.message || `Failed to initiate STK Push via ${executedGateway}. Please try again or use manual Paybill.`
         });
       }
 
