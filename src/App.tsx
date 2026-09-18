@@ -412,9 +412,10 @@ function App() {
           </div>
 
           {/* User profile section */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
+              title="View account profile"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -448,6 +449,41 @@ function App() {
                 {currentUser?.name.substring(0, 2).toUpperCase() || 'US'}
               </div>
               <span>{currentUser?.name.split(' ')[0]}</span>
+            </button>
+
+            {/* Direct Sign Out Button */}
+            <button
+              onClick={() => {
+                setCurrentUser(null);
+                localStorage.removeItem('timecamp_current_user');
+                setShowProfileMenu(false);
+              }}
+              title="Sign Out / Log Out"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '30px',
+                color: '#f87171',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.18)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+              }}
+            >
+              <LogOut size={13} />
+              <span>Sign Out</span>
             </button>
 
             {showProfileMenu && (
