@@ -249,17 +249,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Seeding Guest Sandbox User and Admin profile data
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
-    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@timecamp.com').trim().toLowerCase();
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    const adminPasswordHash = hashPassword(adminPassword);
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
 
-    // Delete any stale rows with conflicting emails or old default admin
+    // Deep clean: Delete any legacy admin@timecamp.com records and mismatched rows
     try {
-      if (adminEmail !== 'admin@timecamp.com') {
-        await sql`DELETE FROM timetracker_users WHERE email = 'admin@timecamp.com';`;
+      await sql`DELETE FROM timetracker_users WHERE email = 'admin@timecamp.com' AND email != ${adminEmail};`;
+      await sql`DELETE FROM timetracker_paypal_settings WHERE email = 'admin@timecamp.com' AND email != ${adminEmail};`;
+      if (adminEmail) {
+        await sql`DELETE FROM timetracker_users WHERE email = ${adminEmail} AND id != 'usr_admin';`;
       }
-      await sql`DELETE FROM timetracker_users WHERE email IN ('guest@example.com', ${adminEmail}) AND id NOT IN ('usr_guest', 'usr_admin');`;
     } catch (cleanErr) {
       console.warn('Conflict clean warning:', cleanErr);
     }
@@ -277,28 +277,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         subscription_status = 'active';
     `;
 
-    await sql`
-      INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
-      VALUES ('usr_admin', 'System Admin', ${adminEmail}, ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
-      ON CONFLICT (id) DO UPDATE SET 
-        name = EXCLUDED.name,
-        email = EXCLUDED.email,
-        password_hash = EXCLUDED.password_hash,
-        role = 'super_admin', 
-        status = 'approved', 
-        subscription_tier = 'premium_weekly', 
-        subscription_status = 'active';
-    `;
+    // Only seed the Super Admin if ADMIN_EMAIL & ADMIN_PASSWORD are configured in Vercel environment
+    if (adminEmail && adminPassword) {
+      const adminPasswordHash = hashPassword(adminPassword);
+      await sql`
+        INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
+        VALUES ('usr_admin', 'System Admin', ${adminEmail}, ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
+        ON CONFLICT (id) DO UPDATE SET 
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          password_hash = EXCLUDED.password_hash,
+          role = 'super_admin', 
+          status = 'approved', 
+          subscription_tier = 'premium_weekly', 
+          subscription_status = 'active';
+      `;
+
+      await sql`
+        INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
+        VALUES ('usr_admin', ${adminEmail}, ${defaultClientId}, 'sandbox', 'USD')
+        ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
+      `;
+    }
 
     await sql`
       INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
       VALUES ('usr_guest', 'guest@example.com', ${defaultClientId}, 'sandbox', 'USD')
-      ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
-    `;
-
-    await sql`
-      INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
-      VALUES ('usr_admin', ${adminEmail}, ${defaultClientId}, 'sandbox', 'USD')
       ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
     `;
 

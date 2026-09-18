@@ -44,7 +44,7 @@ export const ClientPayment: React.FC<ClientPaymentProps> = ({
       .then(data => {
         setInvoice(data.invoice);
         setPaypalSettings(data.paypalSettings || {
-          email: data.invoice.clientEmail || 'admin@timecamp.com',
+          email: data.invoice.clientEmail || 'billing@invoiceaccumulator.com',
           clientId: 'test',
           mode: 'sandbox',
           currency: data.invoice.currency || 'USD'

@@ -26,11 +26,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const passwordHash = hashPassword(password);
 
     // Support dynamic admin credentials from Vercel environment variables
-    const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@timecamp.com').trim().toLowerCase();
-    const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const envAdminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const envAdminPassword = process.env.ADMIN_PASSWORD || '';
 
     // 1. If attempting to log in with the configured Admin Email
-    if (trimmedEmail === envAdminEmail) {
+    if (envAdminEmail && envAdminPassword && trimmedEmail === envAdminEmail) {
       // Strictly verify password against Vercel environment variable
       if (password !== envAdminPassword) {
         return res.status(401).json({ error: 'Invalid email or password' });
@@ -41,10 +41,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Ensure/sync admin account with latest env credentials in the database
       try {
-        // Demote any old super_admin rows that do not match the current envAdminEmail
+        // Demote and purge any old/legacy admin records that do not match current envAdminEmail
         await sql`
           UPDATE timetracker_users SET role = 'user' 
           WHERE role = 'super_admin' AND email != ${envAdminEmail};
+        `;
+        await sql`
+          DELETE FROM timetracker_users WHERE email = 'admin@timecamp.com' AND email != ${envAdminEmail};
         `;
 
         await sql`
@@ -82,8 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 2. If a custom ADMIN_EMAIL is configured, reject old default admin email completely
-    if (envAdminEmail !== 'admin@timecamp.com' && trimmedEmail === 'admin@timecamp.com') {
+    // 2. Reject hardcoded legacy admin email completely if not configured in env
+    if (trimmedEmail === 'admin@timecamp.com' && envAdminEmail !== 'admin@timecamp.com') {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -100,8 +103,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const user = userResult.rows[0];
 
-    // Only the envAdminEmail is granted super_admin role
-    const effectiveRole = user.email === envAdminEmail ? 'super_admin' : (user.role === 'super_admin' ? 'user' : user.role);
+    // Only the exact envAdminEmail is granted super_admin role
+    const effectiveRole = (envAdminEmail && user.email === envAdminEmail) ? 'super_admin' : (user.role === 'super_admin' ? 'user' : user.role);
 
     // Check account status
     if (user.status === 'pending') {
