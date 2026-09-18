@@ -129,11 +129,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
     setPendingMessage(null);
 
     try {
-      const response = await apiRequest<{ status: string; paymentId: string; message: string }>('/billing/subscribe', {
+      const activeGateway = billingSettings?.activeMpesaGateway || (billingSettings?.gravitypayEnabled ? 'gravitypay' : 'payhero');
+      const response = await apiRequest<{ status: string; paymentId: string; message: string; gateway?: string }>('/billing/subscribe', {
         method: 'POST',
         body: JSON.stringify({
           planTier: selectedPlan,
-          paymentMethod: 'payhero',
+          paymentMethod: activeGateway,
           phoneNumber: phoneNumber.trim()
         })
       });
@@ -161,7 +162,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
               setPendingMessage(null);
               onUpdateUser(updatedUser);
               localStorage.setItem('timecamp_current_user', JSON.stringify(updatedUser));
-              setSuccessMessage('Subscription activated successfully via PayHero! Your plan is now active.');
+              setSuccessMessage('Subscription activated successfully! Your plan is now active.');
             } else if (payStatus.status === 'failed') {
               clearInterval(interval);
               setLoading(false);

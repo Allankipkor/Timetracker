@@ -298,6 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
 
       let executedGateway: 'payhero' | 'gravitypay' = targetGateway === 'gravitypay' ? 'gravitypay' : 'payhero';
+      let primaryError: any = null;
 
       try {
         if (targetGateway === 'gravitypay') {
@@ -308,10 +309,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           executedGateway = 'payhero';
         }
       } catch (err: any) {
-        console.error(`${executedGateway} STK Push failed:`, err);
-        return res.status(400).json({
-          error: err.message || `Failed to initiate STK Push via ${executedGateway}. Please try again or use manual Paybill.`
-        });
+        primaryError = err;
+        console.warn(`${targetGateway} STK Push failed (${err.message}). Checking for secondary fallback...`);
+
+        // Attempt failover if the alternative gateway is configured
+        if (targetGateway === 'payhero' && gravitypayConfigured) {
+          try {
+            console.log('Failing over to GravityPay STK push...');
+            await tryGravityPay();
+            executedGateway = 'gravitypay';
+            primaryError = null;
+          } catch (gpErr: any) {
+            console.error('GravityPay fallback also failed:', gpErr);
+          }
+        } else if (targetGateway === 'gravitypay' && payheroConfigured) {
+          try {
+            console.log('Failing over to PayHero STK push...');
+            await tryPayHero();
+            executedGateway = 'payhero';
+            primaryError = null;
+          } catch (phErr: any) {
+            console.error('PayHero fallback also failed:', phErr);
+          }
+        }
+
+        if (primaryError) {
+          console.error(`${executedGateway} STK Push failed:`, primaryError);
+          return res.status(400).json({
+            error: primaryError.message || `Failed to initiate STK Push via ${executedGateway}. Please try again or use manual Paybill.`
+          });
+        }
       }
 
       // Insert pending payment log
