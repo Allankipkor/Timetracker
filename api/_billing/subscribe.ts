@@ -36,11 +36,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid paymentMethod' });
     }
 
-    // Determine prices
+    // Fetch merchant billing settings for dynamic plan prices & gateway credentials
+    const merchantSettingsRes = await sql`
+      SELECT price_basic_monthly, price_standard_monthly, price_premium_weekly
+      FROM timetracker_merchant_billing_settings WHERE id = 'primary' LIMIT 1;
+    `;
+    const merchantSettings = merchantSettingsRes.rows.length > 0 ? merchantSettingsRes.rows[0] : null;
+
+    const pBasic = merchantSettings?.price_basic_monthly ? parseFloat(merchantSettings.price_basic_monthly) : 9.00;
+    const pStandard = merchantSettings?.price_standard_monthly ? parseFloat(merchantSettings.price_standard_monthly) : 18.00;
+    const pPremium = merchantSettings?.price_premium_weekly ? parseFloat(merchantSettings.price_premium_weekly) : 30.00;
+
+    // Determine prices dynamically
     let amount = 0.00;
-    if (planTier === 'basic_monthly') amount = 9.00;
-    else if (planTier === 'standard_monthly') amount = 18.00;
-    else if (planTier === 'premium_weekly') amount = 30.00;
+    if (planTier === 'basic_monthly') amount = pBasic;
+    else if (planTier === 'standard_monthly') amount = pStandard;
+    else if (planTier === 'premium_weekly') amount = pPremium;
 
     const paymentId = 'pay_' + Math.random().toString(36).substr(2, 9);
 

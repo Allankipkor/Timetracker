@@ -30,6 +30,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
   const [gravitypaySecretKey, setGravitypaySecretKey] = useState('');
   const [gravitypayLive, setGravitypayLive] = useState(true);
   const [activeMpesaGateway, setActiveMpesaGateway] = useState<'payhero' | 'gravitypay'>('payhero');
+  const [priceBasicMonthly, setPriceBasicMonthly] = useState<number>(9.00);
+  const [priceStandardMonthly, setPriceStandardMonthly] = useState<number>(18.00);
+  const [pricePremiumWeekly, setPricePremiumWeekly] = useState<number>(30.00);
   const [billingSaved, setBillingSaved] = useState(false);
   const [billingError, setBillingError] = useState('');
 
@@ -50,6 +53,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           setGravitypaySecretKey(data.gravitypaySecretKey || '');
           setGravitypayLive(data.gravitypayLive !== false);
           setActiveMpesaGateway(data.activeMpesaGateway === 'gravitypay' ? 'gravitypay' : 'payhero');
+          setPriceBasicMonthly(data.priceBasicMonthly ?? 9.00);
+          setPriceStandardMonthly(data.priceStandardMonthly ?? 18.00);
+          setPricePremiumWeekly(data.pricePremiumWeekly ?? 30.00);
         })
         .catch(err => {
           console.error('Failed to load merchant billing settings:', err);
@@ -103,7 +109,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           gravitypayPublicKey,
           gravitypaySecretKey,
           gravitypayLive,
-          activeMpesaGateway
+          activeMpesaGateway,
+          priceBasicMonthly: Number(priceBasicMonthly),
+          priceStandardMonthly: Number(priceStandardMonthly),
+          pricePremiumWeekly: Number(pricePremiumWeekly)
         })
       });
       setBillingSaved(true);
@@ -363,7 +372,65 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
             </div>
           </div>
 
-          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
+          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
+            Subscription Plan Pricing ($ USD)
+          </h4>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+            Set the retail price for each subscription tier. The checkout modal and M-Pesa conversions will automatically use these amounts.
+          </p>
+
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>Basic Monthly ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                className="form-control"
+                value={priceBasicMonthly}
+                onChange={(e) => setPriceBasicMonthly(Number(e.target.value))}
+                placeholder="9.00"
+                required
+              />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                ≈ KES {(priceBasicMonthly * (usdToKesRate || 130)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="form-group">
+              <label>Standard Monthly ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                className="form-control"
+                value={priceStandardMonthly}
+                onChange={(e) => setPriceStandardMonthly(Number(e.target.value))}
+                placeholder="18.00"
+                required
+              />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                ≈ KES {(priceStandardMonthly * (usdToKesRate || 130)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="form-group">
+              <label>Professional Weekly ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                className="form-control"
+                value={pricePremiumWeekly}
+                onChange={(e) => setPricePremiumWeekly(Number(e.target.value))}
+                placeholder="30.00"
+                required
+              />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                ≈ KES {(pricePremiumWeekly * (usdToKesRate || 130)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
+          <h4 style={{ fontSize: '0.95rem', color: 'var(--text-primary)', marginTop: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem' }}>
             Paystack Card Gateway Configuration
           </h4>
 

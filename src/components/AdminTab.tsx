@@ -522,9 +522,9 @@ export const AdminTab: React.FC = () => {
 
                     // Format plan tier display name
                     let planName = sub.planTier;
-                    if (sub.planTier === 'basic_monthly') planName = 'Basic Monthly ($9.00)';
-                    else if (sub.planTier === 'standard_monthly') planName = 'Standard Monthly ($18.00)';
-                    else if (sub.planTier === 'premium_weekly') planName = 'Professional Weekly ($30.00)';
+                    if (sub.planTier === 'basic_monthly') planName = `Basic Monthly ($${Number(sub.amount || 9).toFixed(2)})`;
+                    else if (sub.planTier === 'standard_monthly') planName = `Standard Monthly ($${Number(sub.amount || 18).toFixed(2)})`;
+                    else if (sub.planTier === 'premium_weekly') planName = `Professional Weekly ($${Number(sub.amount || 30).toFixed(2)})`;
 
                     return (
                       <tr key={sub.id} style={{

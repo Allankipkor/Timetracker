@@ -123,6 +123,9 @@ model MerchantBillingSettings {
   gravitypaySecretKey String   @default("") @map("gravitypay_secret_key") @db.VarChar(255)
   gravitypayLive      Boolean  @default(true) @map("gravitypay_live")
   activeMpesaGateway  String   @default("payhero") @map("active_mpesa_gateway") @db.VarChar(30)
+  priceBasicMonthly   Decimal  @default(9.00) @map("price_basic_monthly") @db.Decimal(10, 2)
+  priceStandardMonthly Decimal @default(18.00) @map("price_standard_monthly") @db.Decimal(10, 2)
+  pricePremiumWeekly  Decimal  @default(30.00) @map("price_premium_weekly") @db.Decimal(10, 2)
 
   @@map("timetracker_merchant_billing_settings")
 }

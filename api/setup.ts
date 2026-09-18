@@ -168,7 +168,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gravitypay_public_key VARCHAR(255) NOT NULL DEFAULT '',
         gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '',
         gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE,
-        active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'payhero'
+        active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'payhero',
+        price_basic_monthly DECIMAL(10, 2) NOT NULL DEFAULT 9.00,
+        price_standard_monthly DECIMAL(10, 2) NOT NULL DEFAULT 18.00,
+        price_premium_weekly DECIMAL(10, 2) NOT NULL DEFAULT 30.00
       );
     `;
 
@@ -189,6 +192,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_secret_key VARCHAR(255) NOT NULL DEFAULT '';`;
       await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS gravitypay_live BOOLEAN NOT NULL DEFAULT TRUE;`;
       await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS active_mpesa_gateway VARCHAR(30) NOT NULL DEFAULT 'payhero';`;
+      await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS price_basic_monthly DECIMAL(10, 2) NOT NULL DEFAULT 9.00;`;
+      await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS price_standard_monthly DECIMAL(10, 2) NOT NULL DEFAULT 18.00;`;
+      await sql`ALTER TABLE timetracker_merchant_billing_settings ADD COLUMN IF NOT EXISTS price_premium_weekly DECIMAL(10, 2) NOT NULL DEFAULT 30.00;`;
     } catch (migErr) {
       console.warn('Billing settings migration warnings:', migErr);
     }
@@ -211,7 +217,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const safeFks = [
       'ALTER TABLE timetracker_paypal_settings ADD CONSTRAINT timetracker_paypal_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
       'ALTER TABLE timetracker_projects ADD CONSTRAINT timetracker_projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
-      'ALTER TABLE timetracker_tasks ADD CONSTRAINT timetracker_tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_projects(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_tasks ADD CONSTRAINT timetracker_tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
       'ALTER TABLE timetracker_time_entries ADD CONSTRAINT timetracker_time_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
       'ALTER TABLE timetracker_time_entries ADD CONSTRAINT timetracker_time_entries_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_projects(id) ON DELETE CASCADE;',
       'ALTER TABLE timetracker_invoices ADD CONSTRAINT timetracker_invoices_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
@@ -234,7 +240,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         intasend_public_key, intasend_live, intasend_secret_key,
         paystack_public_key, paystack_live, paystack_secret_key,
         gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
-        active_mpesa_gateway
+        active_mpesa_gateway,
+        price_basic_monthly, price_standard_monthly, price_premium_weekly
       )
       VALUES (
         'primary', '400222', '511234', 'Lipa na M-Pesa (Paybill)', 130.00, 
@@ -242,7 +249,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         '', false, '',
         '', false, '',
         '', '', true,
-        'payhero'
+        'payhero',
+        9.00, 18.00, 30.00
       )
       ON CONFLICT (id) DO NOTHING;
     `;

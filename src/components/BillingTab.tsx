@@ -184,9 +184,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
   };
 
   const getPlanPrice = (plan: string): number => {
-    if (plan === 'basic_monthly') return 9.00;
-    if (plan === 'standard_monthly') return 18.00;
-    if (plan === 'premium_weekly') return 30.00;
+    if (plan === 'basic_monthly') return billingSettings?.priceBasicMonthly ?? 9.00;
+    if (plan === 'standard_monthly') return billingSettings?.priceStandardMonthly ?? 18.00;
+    if (plan === 'premium_weekly') return billingSettings?.pricePremiumWeekly ?? 30.00;
     return 0.00;
   };
 
@@ -297,7 +297,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             <h4 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Basic Monthly</h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Ideal for freelance developers with few clients.</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1.5rem 0' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>$9.00</span>
+              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                ${getPlanPrice('basic_monthly').toFixed(2)}
+              </span>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ month</span>
             </div>
             
@@ -368,7 +370,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Perfect for active freelancers and small consultancies.</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1.5rem 0' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>$18.00</span>
+              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                ${getPlanPrice('standard_monthly').toFixed(2)}
+              </span>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ month</span>
             </div>
 
@@ -427,7 +431,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({ currentUser, onUpdateUse
             <h4 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Professional Weekly</h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>High-frequency invoicing with unlimited capacity.</p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '1.5rem 0' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>$30.00</span>
+              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                ${getPlanPrice('premium_weekly').toFixed(2)}
+              </span>
               <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/ week</span>
             </div>
 

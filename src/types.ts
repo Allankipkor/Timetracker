@@ -83,6 +83,9 @@ export interface BillingSettings {
   gravitypayLive?: boolean;
   gravitypayEnabled?: boolean;
   activeMpesaGateway?: 'payhero' | 'gravitypay';
+  priceBasicMonthly?: number;
+  priceStandardMonthly?: number;
+  pricePremiumWeekly?: number;
 }
 
 export interface SubscriptionPayment {

@@ -28,7 +28,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                intasend_public_key, intasend_live, intasend_secret_key, 
                paystack_public_key, paystack_live, paystack_secret_key,
                gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
-               active_mpesa_gateway
+               active_mpesa_gateway,
+               price_basic_monthly, price_standard_monthly, price_premium_weekly
         FROM timetracker_merchant_billing_settings
         WHERE id = 'primary'
         LIMIT 1;
@@ -53,7 +54,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           gravitypayPublicKey: '',
           gravitypayLive: true,
           gravitypayEnabled: false,
-          activeMpesaGateway: 'payhero'
+          activeMpesaGateway: 'payhero',
+          priceBasicMonthly: 9.00,
+          priceStandardMonthly: 18.00,
+          pricePremiumWeekly: 30.00
         });
       }
 
@@ -78,7 +82,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gravitypayLive: settings.gravitypay_live !== false,
         gravitypaySecretKey: isAdmin ? gravitypaySecretKey : undefined,
         gravitypayEnabled,
-        activeMpesaGateway: settings.active_mpesa_gateway === 'gravitypay' ? 'gravitypay' : 'payhero'
+        activeMpesaGateway: settings.active_mpesa_gateway === 'gravitypay' ? 'gravitypay' : 'payhero',
+        priceBasicMonthly: settings.price_basic_monthly ? parseFloat(settings.price_basic_monthly) : 9.00,
+        priceStandardMonthly: settings.price_standard_monthly ? parseFloat(settings.price_standard_monthly) : 18.00,
+        pricePremiumWeekly: settings.price_premium_weekly ? parseFloat(settings.price_premium_weekly) : 30.00
       });
     }
 
@@ -112,12 +119,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         gravitypayPublicKey,
         gravitypaySecretKey,
         gravitypayLive,
-        activeMpesaGateway
+        activeMpesaGateway,
+        priceBasicMonthly,
+        priceStandardMonthly,
+        pricePremiumWeekly
       } = req.body;
 
       if (paybillNumber === undefined || tillNumber === undefined || !bankName || !usdToKesRate) {
         return res.status(400).json({ error: 'Missing required configuration parameters' });
       }
+
+      const pBasic = (priceBasicMonthly !== undefined && !isNaN(Number(priceBasicMonthly))) ? Number(priceBasicMonthly) : 9.00;
+      const pStandard = (priceStandardMonthly !== undefined && !isNaN(Number(priceStandardMonthly))) ? Number(priceStandardMonthly) : 18.00;
+      const pPremium = (pricePremiumWeekly !== undefined && !isNaN(Number(pricePremiumWeekly))) ? Number(pricePremiumWeekly) : 30.00;
 
       await sql`
         INSERT INTO timetracker_merchant_billing_settings (
@@ -125,7 +139,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           intasend_public_key, intasend_live, intasend_secret_key,
           paystack_public_key, paystack_live, paystack_secret_key,
           gravitypay_public_key, gravitypay_secret_key, gravitypay_live,
-          active_mpesa_gateway
+          active_mpesa_gateway,
+          price_basic_monthly, price_standard_monthly, price_premium_weekly
         )
         VALUES (
           'primary', 
@@ -142,7 +157,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ${gravitypayPublicKey ? gravitypayPublicKey.trim() : ''},
           ${gravitypaySecretKey ? gravitypaySecretKey.trim() : ''},
           ${gravitypayLive !== false},
-          ${activeMpesaGateway === 'gravitypay' ? 'gravitypay' : 'payhero'}
+          ${activeMpesaGateway === 'gravitypay' ? 'gravitypay' : 'payhero'},
+          ${pBasic},
+          ${pStandard},
+          ${pPremium}
         )
         ON CONFLICT (id) DO UPDATE SET
           paybill_number = EXCLUDED.paybill_number,
@@ -158,7 +176,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           gravitypay_public_key = EXCLUDED.gravitypay_public_key,
           gravitypay_secret_key = EXCLUDED.gravitypay_secret_key,
           gravitypay_live = EXCLUDED.gravitypay_live,
-          active_mpesa_gateway = EXCLUDED.active_mpesa_gateway;
+          active_mpesa_gateway = EXCLUDED.active_mpesa_gateway,
+          price_basic_monthly = EXCLUDED.price_basic_monthly,
+          price_standard_monthly = EXCLUDED.price_standard_monthly,
+          price_premium_weekly = EXCLUDED.price_premium_weekly;
       `;
 
       return res.status(200).json({ status: 'success', message: 'Merchant billing configurations updated' });
