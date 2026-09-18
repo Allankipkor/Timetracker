@@ -247,35 +247,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ON CONFLICT (id) DO NOTHING;
     `;
 
-    // Seeding Guest Sandbox User and Admin profile data
-    const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
+    // Admin profile initialization from Vercel environment
     const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || '';
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
 
-    // Deep clean: Delete any legacy admin@timecamp.com records and mismatched rows
+    // Deep clean: Delete any legacy admin@timecamp.com and guest@example.com records
     try {
       await sql`DELETE FROM timetracker_users WHERE email = 'admin@timecamp.com' AND email != ${adminEmail};`;
       await sql`DELETE FROM timetracker_paypal_settings WHERE email = 'admin@timecamp.com' AND email != ${adminEmail};`;
+      await sql`DELETE FROM timetracker_users WHERE id = 'usr_guest' OR email = 'guest@example.com';`;
+      await sql`DELETE FROM timetracker_paypal_settings WHERE user_id = 'usr_guest' OR email = 'guest@example.com';`;
+      await sql`DELETE FROM timetracker_projects WHERE user_id = 'usr_guest';`;
       if (adminEmail) {
         await sql`DELETE FROM timetracker_users WHERE email = ${adminEmail} AND id != 'usr_admin';`;
       }
     } catch (cleanErr) {
       console.warn('Conflict clean warning:', cleanErr);
     }
-    
-    await sql`
-      INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
-      VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash}, 'user', 'approved', 'premium_weekly', 'active')
-      ON CONFLICT (id) DO UPDATE SET 
-        name = EXCLUDED.name,
-        email = EXCLUDED.email,
-        password_hash = EXCLUDED.password_hash,
-        role = 'user', 
-        status = 'approved', 
-        subscription_tier = 'premium_weekly', 
-        subscription_status = 'active';
-    `;
 
     // Only seed the Super Admin if ADMIN_EMAIL & ADMIN_PASSWORD are configured in Vercel environment
     if (adminEmail && adminPassword) {
@@ -300,29 +289,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `;
     }
 
-    await sql`
-      INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
-      VALUES ('usr_guest', 'guest@example.com', ${defaultClientId}, 'sandbox', 'USD')
-      ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
-    `;
-
-    await sql`
-      INSERT INTO timetracker_projects (id, user_id, name, client_name, color, hourly_rate)
-      VALUES ('proj_onboard', 'usr_guest', 'Freelance Tasks', 'Sample Client', '#3b82f6', 150.00)
-      ON CONFLICT (id) DO NOTHING;
-    `;
-
-    await sql`
-      INSERT INTO timetracker_tasks (id, project_id, name)
-      VALUES 
-        ('tsk_dev', 'proj_onboard', 'Software Development'),
-        ('tsk_design', 'proj_onboard', 'UI/UX Design')
-      ON CONFLICT (id) DO NOTHING;
-    `;
-
     return res.status(200).json({
       status: 'success',
-      message: 'Vercel Postgres database tables setup (timetracker_ prefix) and admin/guest seeding complete!'
+      message: 'Vercel Postgres database tables setup (timetracker_ prefix) and system initialization complete!'
     });
   } catch (error: any) {
     console.error('Database setup failed:', error);
