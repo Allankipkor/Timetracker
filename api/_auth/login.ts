@@ -29,13 +29,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@timecamp.com').trim().toLowerCase();
     const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
-    // If logging in as the environment-configured admin
-    if (trimmedEmail === envAdminEmail && password === envAdminPassword) {
+    // 1. If attempting to log in with the configured Admin Email
+    if (trimmedEmail === envAdminEmail) {
+      // Strictly verify password against Vercel environment variable
+      if (password !== envAdminPassword) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+
       const adminPasswordHash = hashPassword(envAdminPassword);
       const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
 
       // Ensure/sync admin account with latest env credentials in the database
       try {
+        // Demote any old super_admin rows that do not match the current envAdminEmail
+        await sql`
+          UPDATE timetracker_users SET role = 'user' 
+          WHERE role = 'super_admin' AND email != ${envAdminEmail};
+        `;
+
         await sql`
           INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
           VALUES ('usr_admin', 'System Admin', ${envAdminEmail}, ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
@@ -71,7 +82,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Query user from database for standard users or registered accounts
+    // 2. If a custom ADMIN_EMAIL is configured, reject old default admin email completely
+    if (envAdminEmail !== 'admin@timecamp.com' && trimmedEmail === 'admin@timecamp.com') {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // 3. Query user from database for standard users or registered accounts
     const userResult = await sql`
       SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at FROM timetracker_users 
       WHERE email = ${trimmedEmail} AND password_hash = ${passwordHash}
@@ -83,6 +99,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const user = userResult.rows[0];
+
+    // Only the envAdminEmail is granted super_admin role
+    const effectiveRole = user.email === envAdminEmail ? 'super_admin' : (user.role === 'super_admin' ? 'user' : user.role);
 
     // Check account status
     if (user.status === 'pending') {
@@ -96,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: effectiveRole,
       status: user.status,
       subscriptionTier: user.subscription_tier,
       subscriptionStatus: user.subscription_status,

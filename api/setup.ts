@@ -254,8 +254,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const adminPasswordHash = hashPassword(adminPassword);
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
 
-    // Delete any stale rows with conflicting emails but mismatched IDs
+    // Delete any stale rows with conflicting emails or old default admin
     try {
+      if (adminEmail !== 'admin@timecamp.com') {
+        await sql`DELETE FROM timetracker_users WHERE email = 'admin@timecamp.com';`;
+      }
       await sql`DELETE FROM timetracker_users WHERE email IN ('guest@example.com', ${adminEmail}) AND id NOT IN ('usr_guest', 'usr_admin');`;
     } catch (cleanErr) {
       console.warn('Conflict clean warning:', cleanErr);
