@@ -249,12 +249,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Seeding Guest Sandbox User and Admin profile data
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
-    const adminPasswordHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // sha256 of 'admin123'
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@timecamp.com').trim().toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminPasswordHash = hashPassword(adminPassword);
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
 
     // Delete any stale rows with conflicting emails but mismatched IDs
     try {
-      await sql`DELETE FROM timetracker_users WHERE email IN ('guest@example.com', 'admin@timecamp.com') AND id NOT IN ('usr_guest', 'usr_admin');`;
+      await sql`DELETE FROM timetracker_users WHERE email IN ('guest@example.com', ${adminEmail}) AND id NOT IN ('usr_guest', 'usr_admin');`;
     } catch (cleanErr) {
       console.warn('Conflict clean warning:', cleanErr);
     }
@@ -274,7 +276,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sql`
       INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
-      VALUES ('usr_admin', 'System Admin', 'admin@timecamp.com', ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
+      VALUES ('usr_admin', 'System Admin', ${adminEmail}, ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
       ON CONFLICT (id) DO UPDATE SET 
         name = EXCLUDED.name,
         email = EXCLUDED.email,
@@ -293,7 +295,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sql`
       INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
-      VALUES ('usr_admin', 'admin@timecamp.com', ${defaultClientId}, 'sandbox', 'USD')
+      VALUES ('usr_admin', ${adminEmail}, ${defaultClientId}, 'sandbox', 'USD')
       ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
     `;
 

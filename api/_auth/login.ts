@@ -25,7 +25,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const trimmedEmail = email.trim().toLowerCase();
     const passwordHash = hashPassword(password);
 
-    // Query user
+    // Support dynamic admin credentials from Vercel environment variables
+    const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@timecamp.com').trim().toLowerCase();
+    const envAdminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    // If logging in as the environment-configured admin
+    if (trimmedEmail === envAdminEmail && password === envAdminPassword) {
+      const adminPasswordHash = hashPassword(envAdminPassword);
+      const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
+
+      // Ensure/sync admin account with latest env credentials in the database
+      try {
+        await sql`
+          INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
+          VALUES ('usr_admin', 'System Admin', ${envAdminEmail}, ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
+          ON CONFLICT (id) DO UPDATE SET 
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            password_hash = EXCLUDED.password_hash,
+            role = 'super_admin',
+            status = 'approved',
+            subscription_tier = 'premium_weekly',
+            subscription_status = 'active';
+        `;
+
+        await sql`
+          INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
+          VALUES ('usr_admin', ${envAdminEmail}, ${defaultClientId}, 'sandbox', 'USD')
+          ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email;
+        `;
+      } catch (syncErr) {
+        console.warn('Admin sync warning during login:', syncErr);
+      }
+
+      return res.status(200).json({
+        id: 'usr_admin',
+        name: 'System Admin',
+        email: envAdminEmail,
+        role: 'super_admin',
+        status: 'approved',
+        subscriptionTier: 'premium_weekly',
+        subscriptionStatus: 'active',
+        subscriptionExpiresAt: null,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    // Query user from database for standard users or registered accounts
     const userResult = await sql`
       SELECT id, name, email, role, status, subscription_tier, subscription_status, subscription_expires_at, created_at FROM timetracker_users 
       WHERE email = ${trimmedEmail} AND password_hash = ${passwordHash}
