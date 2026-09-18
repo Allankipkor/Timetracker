@@ -23,6 +23,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // Drop legacy foreign key constraints that may reference old table names or cause constraint violations
+    const legacyFks = [
+      'ALTER TABLE IF EXISTS timetracker_paypal_settings DROP CONSTRAINT IF EXISTS paypal_settings_user_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_projects DROP CONSTRAINT IF EXISTS projects_user_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_tasks DROP CONSTRAINT IF EXISTS tasks_project_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_time_entries DROP CONSTRAINT IF EXISTS time_entries_user_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_time_entries DROP CONSTRAINT IF EXISTS time_entries_project_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_invoices DROP CONSTRAINT IF EXISTS invoices_user_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_invoices DROP CONSTRAINT IF EXISTS invoices_project_id_fkey;',
+      'ALTER TABLE IF EXISTS timetracker_subscription_payments DROP CONSTRAINT IF EXISTS subscription_payments_user_id_fkey;'
+    ];
+    for (const dropQ of legacyFks) {
+      try {
+        await sql.query(dropQ);
+      } catch (e) {
+        // Ignored
+      }
+    }
+
     // 1. Users Table
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_users (
@@ -60,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_projects (
         id VARCHAR(50) PRIMARY KEY,
-        user_id VARCHAR(50) NOT NULL REFERENCES timetracker_users(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL,
         name VARCHAR(100) NOT NULL,
         client_name VARCHAR(100) NOT NULL,
         color VARCHAR(50) NOT NULL,
@@ -72,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_tasks (
         id VARCHAR(50) PRIMARY KEY,
-        project_id VARCHAR(50) NOT NULL REFERENCES timetracker_projects(id) ON DELETE CASCADE,
+        project_id VARCHAR(50) NOT NULL,
         name VARCHAR(100) NOT NULL
       );
     `;
@@ -81,9 +100,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_time_entries (
         id VARCHAR(50) PRIMARY KEY,
-        user_id VARCHAR(50) NOT NULL REFERENCES timetracker_users(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL,
         description TEXT NOT NULL,
-        project_id VARCHAR(50) NOT NULL REFERENCES timetracker_projects(id) ON DELETE CASCADE,
+        project_id VARCHAR(50) NOT NULL,
         task_id VARCHAR(50),
         start_time TIMESTAMP NOT NULL,
         end_time TIMESTAMP,
@@ -98,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_invoices (
         id VARCHAR(50) PRIMARY KEY,
-        user_id VARCHAR(50) NOT NULL REFERENCES timetracker_users(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL,
         invoice_number VARCHAR(50) NOT NULL,
         client_name VARCHAR(100) NOT NULL,
         client_email VARCHAR(255) NOT NULL,
@@ -111,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         discount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         total DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         status VARCHAR(50) NOT NULL DEFAULT 'Draft',
-        project_id VARCHAR(50) NOT NULL REFERENCES timetracker_projects(id) ON DELETE CASCADE,
+        project_id VARCHAR(50) NOT NULL,
         currency VARCHAR(10) NOT NULL DEFAULT 'USD'
       );
     `;
@@ -119,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 6. PayPal Settings Table
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_paypal_settings (
-        user_id VARCHAR(50) PRIMARY KEY REFERENCES timetracker_users(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) PRIMARY KEY,
         email VARCHAR(255) NOT NULL,
         client_id VARCHAR(255) NOT NULL,
         mode VARCHAR(20) NOT NULL DEFAULT 'sandbox',
@@ -178,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await sql`
       CREATE TABLE IF NOT EXISTS timetracker_subscription_payments (
         id VARCHAR(50) PRIMARY KEY,
-        user_id VARCHAR(50) NOT NULL REFERENCES timetracker_users(id) ON DELETE CASCADE,
+        user_id VARCHAR(50) NOT NULL,
         plan_tier VARCHAR(30) NOT NULL,
         amount DECIMAL(10, 2) NOT NULL,
         payment_method VARCHAR(20) NOT NULL,
@@ -187,6 +206,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
+
+    // Re-attach safe foreign key constraints (with ON DELETE CASCADE)
+    const safeFks = [
+      'ALTER TABLE timetracker_paypal_settings ADD CONSTRAINT timetracker_paypal_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_projects ADD CONSTRAINT timetracker_projects_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_tasks ADD CONSTRAINT timetracker_tasks_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_projects(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_time_entries ADD CONSTRAINT timetracker_time_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_time_entries ADD CONSTRAINT timetracker_time_entries_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_projects(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_invoices ADD CONSTRAINT timetracker_invoices_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_invoices ADD CONSTRAINT timetracker_invoices_project_id_fkey FOREIGN KEY (project_id) REFERENCES timetracker_projects(id) ON DELETE CASCADE;',
+      'ALTER TABLE timetracker_subscription_payments ADD CONSTRAINT timetracker_subscription_payments_user_id_fkey FOREIGN KEY (user_id) REFERENCES timetracker_users(id) ON DELETE CASCADE;'
+    ];
+    for (const addQ of safeFks) {
+      try {
+        await sql.query(addQ);
+      } catch (e) {
+        // Ignored if already attached or table constraint exists
+      }
+    }
 
     // Seed default merchant billing details
     await sql`
@@ -213,29 +251,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const guestPasswordHash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92'; // sha256 of 'guest'
     const adminPasswordHash = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // sha256 of 'admin123'
     const defaultClientId = process.env.PAYPAL_CLIENT_ID || 'test';
+
+    // Delete any stale rows with conflicting emails but mismatched IDs
+    try {
+      await sql`DELETE FROM timetracker_users WHERE email IN ('guest@example.com', 'admin@timecamp.com') AND id NOT IN ('usr_guest', 'usr_admin');`;
+    } catch (cleanErr) {
+      console.warn('Conflict clean warning:', cleanErr);
+    }
     
     await sql`
       INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
       VALUES ('usr_guest', 'Guest Developer', 'guest@example.com', ${guestPasswordHash}, 'user', 'approved', 'premium_weekly', 'active')
-      ON CONFLICT (id) DO UPDATE SET role = 'user', status = 'approved', subscription_tier = 'premium_weekly', subscription_status = 'active';
+      ON CONFLICT (id) DO UPDATE SET 
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        password_hash = EXCLUDED.password_hash,
+        role = 'user', 
+        status = 'approved', 
+        subscription_tier = 'premium_weekly', 
+        subscription_status = 'active';
     `;
 
     await sql`
       INSERT INTO timetracker_users (id, name, email, password_hash, role, status, subscription_tier, subscription_status)
       VALUES ('usr_admin', 'System Admin', 'admin@timecamp.com', ${adminPasswordHash}, 'super_admin', 'approved', 'premium_weekly', 'active')
-      ON CONFLICT (id) DO UPDATE SET role = 'super_admin', status = 'approved', subscription_tier = 'premium_weekly', subscription_status = 'active';
+      ON CONFLICT (id) DO UPDATE SET 
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        password_hash = EXCLUDED.password_hash,
+        role = 'super_admin', 
+        status = 'approved', 
+        subscription_tier = 'premium_weekly', 
+        subscription_status = 'active';
     `;
 
     await sql`
       INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
       VALUES ('usr_guest', 'guest@example.com', ${defaultClientId}, 'sandbox', 'USD')
-      ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
+      ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
     `;
 
     await sql`
       INSERT INTO timetracker_paypal_settings (user_id, email, client_id, mode, currency)
       VALUES ('usr_admin', 'admin@timecamp.com', ${defaultClientId}, 'sandbox', 'USD')
-      ON CONFLICT (user_id) DO UPDATE SET client_id = EXCLUDED.client_id;
+      ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, client_id = EXCLUDED.client_id;
     `;
 
     await sql`
@@ -254,7 +313,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       status: 'success',
-      message: 'Vercel Postgres database tables setup (timetracker_ prefix) and guest seeding complete!'
+      message: 'Vercel Postgres database tables setup (timetracker_ prefix) and admin/guest seeding complete!'
     });
   } catch (error: any) {
     console.error('Database setup failed:', error);
