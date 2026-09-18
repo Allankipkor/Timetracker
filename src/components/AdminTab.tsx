@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Check, X, Users, Mail, Clock, AlertCircle, CreditCard, ListChecks } from 'lucide-react';
+import { Shield, Check, X, Users, Mail, Clock, AlertCircle, CreditCard, ListChecks, LogOut } from 'lucide-react';
 import type { User, SubscriptionPayment } from '../types';
 import { apiRequest } from '../api';
 
@@ -144,13 +144,38 @@ export const AdminTab: React.FC = () => {
             Review pending registrations, manage user permissions, and audit billing subscriptions.
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="btn btn-secondary"
-          style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-        >
-          Refresh List
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            onClick={handleRefresh}
+            className="btn btn-secondary"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+          >
+            Refresh List
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem('timecamp_current_user');
+              window.location.reload();
+            }}
+            className="btn"
+            style={{ 
+              padding: '0.5rem 1rem', 
+              fontSize: '0.85rem',
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#f87171',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              borderRadius: '6px'
+            }}
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </div>
 
       {/* Sub-tab view buttons */}
